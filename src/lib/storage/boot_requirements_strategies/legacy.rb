@@ -31,8 +31,7 @@ module Yast
       class Legacy < Base
         def needed_partitions
           volumes = super
-          volumes << grub_volume if grub_partition_required? && grub_partition_missing?
-          if mbr_gap_required?
+          if mbr_gap_needed?
             mbr_gap = disk_analyzer.mbr_gap[settings.root_device]
             # fail if gap is too small
             raise Error if mbr_gap < DiskSize.KiB(256)
@@ -42,45 +41,15 @@ module Yast
 
       protected
 
-        def grub_partition_missing?
-          partitions = disk_analyzer.grub_partitions[settings.root_device]
-          partitions.nil? || partitions.empty?
-        end
-
-        # only needed on GPT partition table
-        # FIXME: currently nobody creates a partition table on an empty disk...
-        def grub_partition_required?
-          if @root_disk &&
-              @root_disk.partition_table? &&
-              @root_disk.partition_table.type == ::Storage::PtType_GPT
-            true
-          else
-            false
-          end
+        def grub_partition_needed?
+          # Always create the partition in GPT, ignore any additional
+          # requisite from Base
+          root_ptable_type?(:gpt)
         end
 
         # only relevant for DOS partition table
-        def mbr_gap_required?
-          if @root_disk &&
-              @root_disk.partition_table? &&
-              @root_disk.partition_table.type == ::Storage::PtType_MSDOS
-            true
-          else
-            false
-          end
-        end
-
-        def grub_volume
-          vol = PlannedVolume.new(nil)
-          # only required on GPT
-          vol.partition_id = ::Storage::ID_GPT_BIOS
-          vol.min_disk_size = DiskSize.KiB(256)
-          vol.max_disk_size = DiskSize.MiB(8)
-          vol.desired_disk_size = DiskSize.MiB(1)
-          vol.align = :keep_size
-          vol.bootable = false
-          vol.can_live_on_logical_volume = false
-          vol
+        def mbr_gap_needed?
+          root_ptable_type?(:msdos)
         end
       end
     end

@@ -39,3 +39,25 @@ RSpec.shared_examples "proposed boot partition" do
     expect(boot_part.desired).to eq 200.MiB
   end
 end
+
+RSpec.shared_examples "proposed GRUB partition" do
+  using Yast::Storage::Refinements::SizeCasts
+
+  it "requires it to have the correct id" do
+    expect(grub_part.partition_id).to eq ::Storage::ID_GPT_BIOS
+  end
+
+  it "requires it to be out of LVM" do
+    expect(grub_part.can_live_on_logical_volume).to eq false
+  end
+
+  it "requires it to be between 256KiB and 8MiB, despite the alignment" do
+    expect(grub_part.min).to eq 256.KiB
+    expect(grub_part.max).to eq 8.MiB
+    expect(grub_part.align).to eq :keep_size
+  end
+
+  it "recommends it to be 1 MiB" do
+    expect(grub_part.desired).to eq 1.MiB
+  end
+end

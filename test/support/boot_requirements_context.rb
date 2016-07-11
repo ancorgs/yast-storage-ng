@@ -37,6 +37,9 @@ RSpec.shared_context "boot requirements" do
   let(:analyzer) { instance_double("Yast::Storage::DiskAnalyzer") }
   let(:storage_arch) { instance_double("::Storage::Arch") }
   let(:dev_sda) { instance_double("::Storage::Disk", name: "/dev/sda") }
+  let(:pt_gpt) { instance_double("::Storage::PartitionTable") }
+  let(:pt_msdos) { instance_double("::Storage::PartitionTable") }
+  let(:sda_part_table) { pt_msdos }
 
   before do
     Yast::Storage::StorageManager.fake_from_yaml
@@ -47,5 +50,10 @@ RSpec.shared_context "boot requirements" do
     allow(storage_arch).to receive(:s390?).and_return(architecture == :s390)
 
     allow(analyzer).to receive(:device_by_name).with("/dev/sda").and_return(dev_sda)
+
+    allow(dev_sda).to receive(:partition_table?).and_return(true)
+    allow(dev_sda).to receive(:partition_table).and_return(sda_part_table)
+    allow(pt_gpt).to receive(:type).and_return(::Storage::PtType_GPT)
+    allow(pt_msdos).to receive(:type).and_return(::Storage::PtType_MSDOS)
   end
 end

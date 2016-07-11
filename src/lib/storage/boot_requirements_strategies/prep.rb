@@ -34,7 +34,7 @@ module Yast
       class PReP < Base
         def needed_partitions
           volumes = super
-          volumes << prep_volume if prep_partition_required? && prep_partition_missing?
+          volumes << prep_volume if prep_partition_needed? && prep_partition_missing?
           volumes
         end
 
@@ -45,7 +45,7 @@ module Yast
           partitions.nil? || partitions.empty?
         end
 
-        def prep_partition_required?
+        def prep_partition_needed?
           # no need of PReP partition in OPAL/PowerNV/Bare metal
           !arch.ppc_power_nv?
         end

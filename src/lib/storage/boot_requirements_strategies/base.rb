@@ -47,6 +47,7 @@ module Yast
         def needed_partitions
           volumes = PlannedVolumesList.new
           volumes << boot_volume if boot_partition_needed?
+          volumes << grub_volume if grub_partition_needed? && grub_partition_missing?
           volumes
         end
 
@@ -57,7 +58,19 @@ module Yast
         attr_reader :root_disk
 
         def boot_partition_needed?
-          settings.use_lvm # || settings.encrypted
+          # FIXME: so far we don't create partition tables, so we just analyze
+          # the existing one.
+          root_ptable_type?(:msdos) && settings.use_lvm #TODO: || settings.encrypted
+        end
+
+        def grub_partition_needed?
+          # FIXME: see above for note above existing partition tables
+          root_ptable_type?(:gpt) && settings.use_lvm # TODO: || settings.encrypted
+        end
+
+        def grub_partition_missing?
+          partitions = disk_analyzer.grub_partitions[settings.root_device]
+          partitions.nil? || partitions.empty?
         end
 
         def boot_volume
@@ -68,6 +81,32 @@ module Yast
           vol.desired_disk_size = DiskSize.MiB(200)
           vol.can_live_on_logical_volume = false
           vol
+        end
+
+        def grub_volume
+          vol = PlannedVolume.new(nil)
+          # only required on GPT
+          vol.partition_id = ::Storage::ID_GPT_BIOS
+          vol.min_disk_size = DiskSize.KiB(256)
+          vol.max_disk_size = DiskSize.MiB(8)
+          vol.desired_disk_size = DiskSize.MiB(1)
+          vol.align = :keep_size
+          vol.bootable = false
+          vol.can_live_on_logical_volume = false
+          vol
+        end
+
+        def root_ptable_type
+          return nil unless root_disk
+          return nil unless root_disk.partition_table?
+          root_disk.partition_table.type
+        end
+
+        def root_ptable_type?(type)
+          if !type.is_a?(Fixnum)
+            type = ::Storage.const_get(:"PtType_#{type.to_s.upcase}")
+          end
+          root_ptable_type == type
         end
       end
     end
