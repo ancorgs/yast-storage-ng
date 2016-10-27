@@ -65,7 +65,7 @@ module Y2Storage
       #   space_distribution: [SpaceDistribution] proposed distribution of
       #     volumes
       #
-      def provide_space(volumes)
+      def provide_space(volumes, reuse_vg: nil, lvm_target_size: nil)
         @new_graph = original_graph.duplicate
         @deleted_names = []
 
@@ -77,6 +77,22 @@ module Y2Storage
           log.info "No need to find a fit for this volume, it will reuse #{vol.reuse}: #{vol}"
           keep << vol.reuse
           volumes.delete(vol)
+        end
+
+        if reuse_vg
+          # Keep PVs of the VG we want to reuse
+          pv_names = disk_analyzer.used_lvm_partitions[reuse_vg].map(&:name)
+          keep.concat(pv_names)
+
+          volume_group = new_graph.lvm_vgs.with(vg_name: reuse_vg).first
+          volume_group_size = DiskSize.new(volume_group.size)
+          if volume_group_size < lvm_target_size
+            @missing_lvm_size = lvm_target_size - volume_group_size
+          else
+            @missing_lvm_size = DiskSize.zero
+          end
+        else
+          @missing_lvm_size = lvm_target_size
         end
 
         # To make sure we are not freeing space in a useless place, let's
@@ -100,6 +116,7 @@ module Y2Storage
     protected
 
       attr_reader :original_graph, :new_graph, :disk_analyzer
+      attr_reader :missing_lvm_size
 
       # Partitions from the original devicegraph that are not present in the
       # result of the last call to #provide_space
@@ -126,7 +143,12 @@ module Y2Storage
       #
       # @return [Boolean]
       def success?(volumes)
-        @distribution ||= SpaceDistribution.best_for(volumes, free_spaces(new_graph).to_a, new_graph)
+        @distribution ||= SpaceDistribution.best_for(
+          volumes,
+          free_spaces(new_graph).to_a,
+          new_graph,
+          extra_lvm_size: missing_lvm_size
+        )
         !!@distribution
       rescue Error => e
         log.info "Exception while trying to distribute volumes: #{e}"
@@ -160,7 +182,8 @@ module Y2Storage
       #
       # @return [DiskSize]
       def missing_required_size(volumes, disk)
-        SpaceDistribution.missing_disk_size(volumes, free_spaces(new_graph, disk).to_a)
+        lvm_size = missing_lvm_size || DiskSize.zero
+        SpaceDistribution.missing_disk_size(volumes, lvm_size, free_spaces(new_graph, disk).to_a)
       end
 
       # List of free spaces in the given devicegraph
@@ -301,7 +324,16 @@ module Y2Storage
           end
           part = find_partition(part_name)
           next unless part
-          delete_partition(part)
+
+          if lvm_pv?(part)
+            # Strictly speaking, this could lead to deletion of a partition
+            # included in the keep array. In practice it doesn't matter because
+            # PVs are never marked to be reused as a PlannedVolume.
+            delete_lvm_partitions(part)
+          else
+            delete_partition(part)
+          end
+
           break if success?(volumes)
         end
       end
@@ -323,6 +355,26 @@ module Y2Storage
         else
           @deleted_names << partition.name
           partition.partition_table.delete_partition(partition.name)
+        end
+      end
+
+      # Deletes the given partition and all other partitions in the candidate
+      # disks that are part of the same LVM volume group
+      #
+      # Rationale: when deleting a partition that holds a PV of a given VG, we
+      # are effectively killing the whole VG. It makes no sense to leave the
+      # other PVs alive. So let's reclaim all the space.
+      #
+      # @param [partition] A partition that is acting as LVM physical volume
+      def delete_lvm_partitions(partition)
+        log.info "Deleting #{partition.name}, which is part of an LVM volume group"
+        vg_parts = disk_analyzer.used_lvm_partitions.values.detect do |parts|
+          parts.map(&:name).include?(partition.name)
+        end
+        target_parts = vg_parts.map { |p| find_partition(p.name) }.compact
+        log.info "These LVM partitions will be deleted: #{target_parts.map(&:name)}"
+        target_parts.each do |part|
+          delete_partition(part)
         end
       end
 
@@ -411,6 +463,15 @@ module Y2Storage
           disk_analyzer.linux_partitions.values.flatten
         end
         parts.map(&:name)
+      end
+
+      # Checks whether the partition is part of a volume group
+      #
+      # @param partition [::Storage::Partition]
+      # @return [array<string>]
+      def lvm_pv?(partition)
+        lvm_pv_names = disk_analyzer.used_lvm_partitions.values.flatten.map(&:name)
+        lvm_pv_names.include?(partition.name)
       end
     end
   end

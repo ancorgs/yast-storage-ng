@@ -100,6 +100,7 @@ module Y2Storage
           vol.min_disk_size     = swap_size
           vol.max_disk_size     = swap_size
           vol.desired_disk_size = swap_size
+          vol.can_live_on_logical_volume = true
         end
         vol
       end
@@ -135,6 +136,7 @@ module Y2Storage
           root_vol.max_disk_size *= multiplicator
         end
         root_vol.desired_disk_size = root_vol.max_disk_size
+        root_vol.can_live_on_logical_volume = true
         root_vol
       end
 
@@ -148,6 +150,7 @@ module Y2Storage
         home_vol.min_disk_size = settings.home_min_disk_size
         home_vol.max_disk_size = settings.home_max_disk_size
         home_vol.weight = 100.0 - settings.root_space_percent
+        home_vol.can_live_on_logical_volume = true
         home_vol
       end
 

@@ -272,27 +272,36 @@ module Y2Storage
         # @param volumes [PlannedVolumesList]
         # @param disk_spaces [Array<FreeDiskSpace>]
         # @param devicegraph [::Storage::Devicegraph]
+        # @param extra_lvm_size [DiskSize, nil]
         #
         # @return [SpaceDistribution]
-        def best_for(volumes, disk_spaces, devicegraph)
+        def best_for(volumes, disk_spaces, devicegraph, extra_lvm_size: nil)
           begin
+            # First, let's try to find at least one candidate space (hopefully
+            # more) for each volume
             disk_spaces_by_vol = candidate_disk_spaces(volumes, disk_spaces)
           rescue NoDiskSpaceError
             return nil
           end
 
-          candidates = hash_product(disk_spaces_by_vol).map do |combination|
-            lists = inverse_hash(combination)
-            lists = lists.each_with_object({}) do |(space, vols), hash|
-              hash[space] = PlannedVolumesList.new(vols, target: volumes.target)
-            end
+          # Get all the possible distributions of volumes into spaces
+          # Hash{FreeDiskSpace => PlannedVolumesList}
+          dist_hashes = distribution_hashes(disk_spaces_by_vol, volumes.target)
+
+          # If LVM is being used, the number of possible distributions increases
+          # a lot. For every space on every distribution we can decide to place
+          # an LVM PV or not. Let's explore all the options.
+          if extra_lvm_size
+            dist_hashes = add_pv_combinations(dist_hashes, disk_spaces, extra_lvm_size)
+          end
+
+          candidates = dist_hashes.map do |distribution_hash|
             begin
-              SpaceDistribution.new(lists, devicegraph)
+              SpaceDistribution.new(distribution_hash, devicegraph)
             rescue Error
               next
             end
           end
-
           candidates.compact.sort { |a, b| a.better_than(b) }.first
         end
 
@@ -309,8 +318,8 @@ module Y2Storage
         # @param volumes [PlannedVolumesList]
         # @param disk_spaces [Array<FreeDiskSpace>]
         # @return [DiskSize]
-        def missing_disk_size(volumes, free_spaces)
-          needed_size = volumes.target_disk_size
+        def missing_disk_size(volumes, lvm_size, free_spaces)
+          needed_size = volumes.target_disk_size + lvm_size
           available_space = available_space(free_spaces)
           needed_size - available_space
         end
@@ -390,6 +399,75 @@ module Y2Storage
           hash.each_with_object({}) do |(key, value), out|
             out[value] ||= []
             out[value] << key
+          end
+        end
+
+        def add_pv_combinations(distributions, disk_spaces, extra_lvm_size)
+          pv_combinations = lvm_pv_combinations(disk_spaces)
+          distributions.each_with_object([]) do |dist_hash, result|
+            all_distributions = pv_product(dist_hash, pv_combinations, extra_lvm_size)
+            result.concat(all_distributions)
+          end
+        end
+
+        def distribution_hashes(disk_spaces_by_vol, target)
+          return [ {} ] if disk_spaces_by_vol.empty?
+
+          hash_product(disk_spaces_by_vol).map do |combination|
+            # combination looks like this
+            # {vol1: :space1, vol2: :space1, vol3: :space2}
+            group_by_space(combination, target)
+          end
+        end
+
+        def pv_product(distribution_hash, pv_combinations, extra_lvm_size)
+          pv_combinations.each_with_object([]) do |pvs, result|
+            pv_vols = {}
+            pvs.each_pair do |space, pv_marker|
+              next if pv_marker == :no_pv
+
+              volumes = distribution_hash[space]
+              volumes ||= PlannedVolumesList.new
+              pv_vols[space] = pv_volume_for(space, volumes)
+            end
+            next if pv_vols.values.any?(&:nil?)
+            next if pv_vols.values.map(&:min_disk_size).reduce(DiskSize.zero, :+) < extra_lvm_size
+
+            dist = distribution_hash.dup
+            pv_vols.each_pair do |space, pv|
+              dist[space] ||= PlannedVolumesList.new
+              dist[space] << pv
+            end
+            result << dist
+          end
+        end
+
+        def pv_volume_for(space, volumes)
+          reusable_disk_size = space.disk_size - volumes.target_disk_size
+          return nil unless reusable_disk_size > DiskSize.zero
+
+          pv_vol = PlannedVolume.new(nil)
+          pv_vol.partition_id = ::Storage::ID_LVM
+          pv_vol.min_disk_size = pv_vol.desired_disk_size = reusable_disk_size
+          pv_vol
+        end
+
+        def group_by_space(combination, target)
+          combination = inverse_hash(combination)
+          combination.each_with_object({}) do |(space, vols), hash|
+            hash[space] = PlannedVolumesList.new(vols, target: target)
+          end
+        end
+
+        # [
+        #  { space1 => :pv, space2 => :pv },
+        #  { space1 => :no_pv, space2 => :pv },
+        #  { space1 => :pv, space2 => :no_pv },
+        #  { space1 => :no_pv, space2 => :no_pv },
+        # ]
+        def lvm_pv_combinations(spaces)
+          [:pv, :no_pv].repeated_permutation(spaces.size).map do |combination|
+            Hash[spaces.zip(combination)]
           end
         end
       end

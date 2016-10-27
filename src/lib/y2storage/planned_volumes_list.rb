@@ -143,6 +143,16 @@ module Y2Storage
       end.map(&:first)
     end
 
+    def split_by(&block)
+      delegated = @volumes.partition(&block)
+      if delegated.is_a?(Array)
+        delegated.map { |l| PlannedVolumesList.new(l, target: target) }
+      else
+        # Enumerator
+        delegated
+      end
+    end
+
     def to_s
       "#<PlannedVolumesList target=#{@target}, volumes=#{@volumes.map(&:to_s)}>"
     end

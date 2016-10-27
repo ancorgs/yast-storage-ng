@@ -83,11 +83,48 @@ module Y2Storage
       #
       # @return [::Storage::Devicegraph]
       def provide_space(volumes, space_maker)
+        if settings.use_lvm
+          provide_space_lvm(volumes, space_maker)
+        else
+          provide_space_no_lvm(volumes, space_maker)
+        end
+      end
+
+      def provide_space_no_lvm(volumes, space_maker)
         result = space_maker.provide_space(volumes)
-        log.info(
-          "Found #{volumes.target} space"
-        )
+        log.info "Found #{volumes.target} space"
         result
+      end
+
+      def provide_space_lvm(volumes, space_maker)
+        lvm_volumes, no_lvm_volumes = volumes.split_by(&:can_live_on_logical_volume)
+        vg_size = lvm_volumes.target_disk_size
+        @reused_vg = nil
+
+        reusable_lvm_vgs.each do |vg_name|
+          begin
+            result = space_maker.provide_space(
+              no_lvm_volumes,
+              reuse_vg: vg_name,
+              lvm_target_size: vg_size
+            )
+            log.info "Found (#{no_lvm_volumes.target} + #{vg_size}) space, reusing #{vg_name}"
+            @reused_vg = vg_name
+            return result
+          rescue NoDiskSpaceError
+            next
+          end
+        end
+
+        result = space_maker.provide_space(no_lvm_volumes, lvm_target_size: vg_size)
+        log.info "Found (#{no_lvm_volumes.target} + #{vg_size}) space"
+        result
+      end
+
+      def reusable_lvm_vgs
+        # TODO: to be written. Should return all candidate VGs sorted by some
+        # criteria
+        []
       end
 
       # Adds some extra information to the planned volumes inferred from
