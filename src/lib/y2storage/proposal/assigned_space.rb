@@ -78,7 +78,7 @@ module Y2Storage
       # @return [DiskSize]
       def unused
         max = volumes.max_disk_size
-        max >= disk_size ? 0 : disk_size - max
+        max >= usable_size ? 0 : usable_size - max
       end
 
       # Space available in addition to the target
@@ -103,6 +103,10 @@ module Y2Storage
         # libstorage has already substracted the the overhead of the first EBR.
         logical -= 1 if partition_type == :logical
         disk_size - overhead_of_logical * logical
+      end
+
+      def usable_extra_size
+        usable_size - volumes.target_disk_size
       end
 
       # Space consumed by the EBR of one logical partition in a given disk

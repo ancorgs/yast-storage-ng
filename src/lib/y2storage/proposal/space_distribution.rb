@@ -51,6 +51,22 @@ module Y2Storage
         end
       end
 
+      def add_volumes(volumes_by_disk_space)
+        volumes = {}
+        spaces.each do |space|
+          volumes[space.disk_space] = space.volumes.dup
+        end
+        volumes_by_disk_space.each do |space, volume|
+          volumes[space] ||= PlannedVolumesList.new
+          volumes[space] << volume
+        end
+        SpaceDistribution.new(volumes)
+      end
+
+      def space_at(disk_space)
+        spaces.detect { |s| s.disk_space == disk_space }
+      end
+
       # Space wasted by the distribution
       # @return [DiskSize]
       def gaps_total_disk_size
@@ -108,6 +124,12 @@ module Y2Storage
       def to_s
         spaces_str = spaces.map { |s| s.to_s }.join(", ")
         "#<SpaceDistribution spaces=[#{spaces_str}]>"
+      end
+
+      def ==(other)
+        res = (other.class == self.class && other.comparable_string == comparable_string)
+        puts(res) if res
+        res
       end
 
       # Deterministic string representation of the space distribution
