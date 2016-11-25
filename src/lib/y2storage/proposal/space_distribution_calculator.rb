@@ -65,29 +65,28 @@ module Y2Storage
           return nil
         end
 
-        log.info "Calculate all the possible distributions of volumes into spaces"
+        log.info "Calculate the best possible distribution of volumes into spaces"
         dist_hashes = distribution_hashes(disk_spaces_by_vol, volumes.target)
 
-        candidates = dist_hashes.map do |distribution_hash|
+        pv_calculator = PhysVolCalculator.new(spaces, lvm_helper)
+        best = nil
+        dist_hashes.each do |distribution_hash|
           begin
-            SpaceDistribution.new(distribution_hash)
+            candidate = SpaceDistribution.new(distribution_hash)
           rescue Error
             next
           end
-        end
-        candidates.compact!
 
-        if lvm_helper.missing_space > DiskSize.zero
-          log.info "Calculate LVM posibilities for each candidate distribution"
-          pv_calculator = PhysVolCalculator.new(spaces, lvm_helper)
-          candidates.map! { |dist| pv_calculator.add_physical_volumes(dist) }
-        end
-        candidates.compact!
+          if lvm_helper.missing_space > DiskSize.zero
+            log.info "Calculate LVM posibilities for the candidate distribution"
+            candidate = pv_calculator.add_physical_volumes(candidate)
+            next unless candidate
+          end
 
-        log.info "Comparing #{candidates.size} distributions"
-        result = candidates.sort { |a, b| a.better_than(b) }.first
-        log.info "best_for result: #{result}"
-        result
+          best = candidate if !best || candidate.better_than(best) < 0
+        end
+        log.info "best_for result: #{best}"
+        best
       end
 
       # Space that should be freed when resizing an existing partition in
