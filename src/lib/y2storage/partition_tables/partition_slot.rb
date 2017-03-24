@@ -2,6 +2,9 @@ require "y2storage/storage_class_wrapper"
 
 module Y2Storage
   module PartitionTables
+    # A slot within a partition table
+    #
+    # This is a wrapper for Storage::PartitionSlot
     class PartitionSlot
       include StorageClassWrapper
       wrap_class Storage::PartitionSlot

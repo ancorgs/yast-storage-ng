@@ -3,6 +3,9 @@ require "y2storage/partitionable"
 require "y2storage/free_disk_space"
 
 module Y2Storage
+  # A physical disk device
+  #
+  # This is a wrapper for Storage::Disk
   class Disk < Partitionable
     include StorageClassWrapper
     wrap_class Storage::Disk
@@ -38,14 +41,6 @@ module Y2Storage
     # @return [Boolean]
     def usb?
       transport.to_sym == :usb
-    end
-
-    # Checks whether it contains a GUID partition table
-    #
-    # @return [Boolean]
-    def gpt?
-      return false unless partition_table
-      partition.type.to_sym == :gpt
     end
 
     # Executes the given block in a context in which the disk always have a
@@ -91,6 +86,16 @@ module Y2Storage
     def preferred_ptable_type
       # TODO: so far, DASD is not supported, so we always suggest GPT
       PartitionTables::Type.find(:gpt)
+    end
+
+    def name_or_partition?(name)
+      return true if self.name == name
+
+      partitions.any? { |part| part.name == name }
+    end
+
+    def self.find_by_name_or_partition(devicegraph, name)
+      all(devicegraph).detect { |disk| disk.name_or_partition?(name) }
     end
   end
 end

@@ -24,9 +24,13 @@
 require "yast"
 require "y2storage/abstract_device_factory.rb"
 require "y2storage/disk_size.rb"
-require "y2storage/enum_mappings.rb"
 require "y2storage/disk"
 require "y2storage/region"
+require "y2storage/align_policy"
+require "y2storage/partition_id"
+require "y2storage/partition_type"
+require "y2storage/partition_tables/type"
+require "y2storage/filesystems/type"
 
 module Y2Storage
   #
@@ -37,8 +41,6 @@ module Y2Storage
   # rubocop:disable Metrics/ClassLength
   #
   class FakeDeviceFactory < AbstractDeviceFactory
-    include EnumMappings
-
     # Valid toplevel products of this factory
     VALID_TOPLEVEL  = ["disk", "lvm_vg"]
 
@@ -287,11 +289,11 @@ module Y2Storage
     # Partition table type represented by a string
     #
     # @param string [String] usually from a YAML file
-    # @return [Fixnum]
+    # @return [PartitionTables::Type]
     def str_to_ptable_type(string)
       # Allow different spelling
       string = "msdos" if string.casecmp("ms-dos").zero?
-      fetch(PARTITION_TABLE_TYPES, string, "partition table type", "disk_name")
+      fetch(PartitionTables::Type, string, "partition table type", "disk_name")
     end
 
     # Factory method to create a partition.
@@ -338,9 +340,9 @@ module Y2Storage
       file_system_data_picker(part_name, args)
 
       id = id.to_i(16) if id.is_a?(::String) && id.start_with?("0x")
-      id   = fetch(PARTITION_IDS,   id,   "partition ID",   part_name) unless id.is_a?(Fixnum)
-      type = fetch(PARTITION_TYPES, type, "partition type", part_name)
-      align = fetch(ALIGN_POLICIES, align, "align policy", part_name) if align
+      id   = fetch(PartitionId,   id,   "partition ID",   part_name) unless id.is_a?(Fixnum)
+      type = fetch(PartitionType, type, "partition type", part_name)
+      align = fetch(AlignPolicy,  align, "align policy",  part_name) if align
 
       disk = Disk.find_by_name(devicegraph, disk_name)
       ptable = disk.partition_table
@@ -398,15 +400,11 @@ module Y2Storage
     #
     def create_file_system(parent, args)
       log.info("#{__method__}( #{parent}, #{args} )")
-      fs_type = fetch(FILE_SYSTEM_TYPES, args, "file system type", parent)
+      fs_type = fetch(Filesystems::Type, args, "file system type", parent)
 
       # Fetch file system related parameters stored by create_partition()
       fs_param = @file_system_data[parent] || {}
-      mount_point   = fs_param["mount_point"]
-      label         = fs_param["label"]
-      uuid          = fs_param["uuid"]
-      fstab_options = fs_param["fstab_options"]
-      encryption    = fs_param["encryption"]
+      encryption = fs_param["encryption"]
 
       if !encryption.nil?
         log.info("file system is on encrypted device #{encryption}")
@@ -414,11 +412,15 @@ module Y2Storage
       end
       blk_device = BlkDevice.find_by_name(@devicegraph, parent)
       file_system = blk_device.create_blk_filesystem(fs_type)
-      file_system.add_mountpoint(mount_point) if mount_point
-      file_system.label = label if label
-      file_system.uuid = uuid if uuid
-      set_fstab_options(file_system, fstab_options)
+      assign_file_system_params(file_system, fs_param)
       parent
+    end
+
+    def assign_file_system_params(file_system, fs_param)
+      ["mount_point", "label", "uuid", "fstab_options"].each do |param|
+        value = fs_param[param]
+        file_system.send(:"#{param}=", value) if value
+      end
     end
 
     # Picks some parameters that are really file system related from args
@@ -432,18 +434,6 @@ module Y2Storage
     def file_system_data_picker(name, args)
       fs_param = FILE_SYSTEM_PARAM << "encryption"
       @file_system_data[name] = args.select { |k, _v| fs_param.include?(k) }
-    end
-
-    # Assigns the value of Filesystem#fstab_options. A direct assignation of a
-    # regular Ruby collection (like Array) will not work because
-    # Filesystem#fstab_options= expects an argument with a very specific SWIG
-    # type (std::list)
-    #
-    # @param [Storage::BlkFilesystem] File system being created
-    # @param [#each] Collection of strings to assign
-    def set_fstab_options(file_system, fstab_options)
-      return if fstab_options.nil? || fstab_options.empty?
-      fstab_options.each { |opt| file_system.fstab_options << opt }
     end
 
     # Factory method to create a slot of free space.
@@ -604,17 +594,19 @@ module Y2Storage
 
   private
 
-    # Fetch hash[key] and raise an exception if there is no such key.
+    # Fetch an enum value
+    # @raise [ArgumentError] if such value is not defined
     #
-    # @param hash [Hash]   hash to search in
-    # @param key  [String] key  in the hash to access
-    # @param type [String] type (description) of 'key'
-    # @param name [String] name of the object that 'hash' belongs to
+    # @param klass  [Class] class used to represent the enum
+    # @param name   [String] name of the enum value
+    # @param type   [String] type (description) of 'key'
+    # @param object [String] name of the object that was being processed
     #
-    def fetch(hash, key, type, name)
-      value = hash[key.downcase]
+    def fetch(klass, name, type, object)
+      value = klass.find(name)
       if !value
-        raise ArgumentError, "Invalid #{type} \"#{key}\" for #{name} - use one of #{hash.keys}"
+        available = klass.all.map(&:to_s)
+        raise ArgumentError, "Invalid #{type} \"#{name}\" for #{object} - use one of #{available}"
       end
       value
     end

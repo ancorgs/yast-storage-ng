@@ -67,12 +67,26 @@ module Y2Storage
       @proposal = nil
     end
 
+    # FIXME: To be replaced by #y2storage_probed as soon as all everything is
+    # adapted to use the new wrapper
     def probed
-      @probed ||= Devicegraph.new(storage.probed)
+      storage.probed
     end
 
+    # FIXME: this should become #probed after adapting other modules
+    def y2storage_probed
+      @y2probed ||= Devicegraph.new(storage.probed)
+    end
+
+    # FIXME: To be replaced by #y2storage_staging as soon as all everything is
+    # adapted to use the new wrapper
     def staging
-      @staging ||= Devicegraph.new(storage.staging)
+      storage.staging
+    end
+
+    # FIXME: this should become #staging after adapting other modules
+    def y2storage_staging
+      @y2staging ||= Devicegraph.new(storage.staging)
     end
 
     # Checks whether the staging devicegraph has been previously set, either
@@ -176,8 +190,8 @@ module Y2Storage
         @instance ||= create_test_instance
         fake_graph = Devicegraph.new(@instance.storage.create_devicegraph("fake"))
         Y2Storage::FakeDeviceFactory.load_yaml_file(fake_graph, yaml_file) if yaml_file
-        fake_graph.copy(@instance.probed)
-        fake_graph.copy(@instance.staging)
+        fake_graph.copy(@instance.y2storage_probed)
+        fake_graph.copy(@instance.y2storage_staging)
         @instance.storage.remove_devicegraph("fake")
         @instance
       end

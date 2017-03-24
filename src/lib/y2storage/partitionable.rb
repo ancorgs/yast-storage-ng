@@ -3,6 +3,10 @@ require "y2storage/blk_device"
 require "y2storage/partition_tables"
 
 module Y2Storage
+  # Base class for all the devices that can contain a partition table, like
+  # disks or RAID devices
+  #
+  # This is a wrapper for Storage::Partitionable
   class Partitionable < BlkDevice
     include StorageClassWrapper
     wrap_class Storage::Partitionable, downcast_to: "Disk"
@@ -26,6 +30,14 @@ module Y2Storage
 
     def partitions
       partition_table ? partition_table.partitions : []
+    end
+
+    # Checks whether it contains a GUID partition table
+    #
+    # @return [Boolean]
+    def gpt?
+      return false unless partition_table
+      partition_table.type.to_sym == :gpt
     end
   end
 end

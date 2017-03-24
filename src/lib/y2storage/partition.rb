@@ -3,6 +3,9 @@ require "y2storage/blk_device"
 require "y2storage/disk"
 
 module Y2Storage
+  # A partition in a partitionable device (like a disk or RAID)
+  #
+  # This is a wrapper for Storage::Partition
   class Partition < BlkDevice
     include StorageClassWrapper
     wrap_class Storage::Partition
@@ -18,7 +21,6 @@ module Y2Storage
     storage_forward :boot=
     storage_forward :legacy_boot?
     storage_forward :legacy_boot=
-
 
     storage_class_forward :create, as: "Partition"
     storage_class_forward :find_by_name, as: "Partition"

@@ -3,6 +3,9 @@ require "y2storage/device"
 
 module Y2Storage
   module PartitionTables
+    # Base class for the different kinds of partition tables.
+    #
+    # This is a wrapper for Storage::PartitionTable
     class Base < Device
       include StorageClassWrapper
       wrap_class Storage::PartitionTable,

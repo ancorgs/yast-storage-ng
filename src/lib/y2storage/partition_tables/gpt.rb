@@ -3,6 +3,9 @@ require "y2storage/partition_tables/base"
 
 module Y2Storage
   module PartitionTables
+    # A GUID partition table
+    #
+    # This is a wrapper for Storage::Gpt
     class Gpt < Base
       include StorageClassWrapper
       wrap_class Storage::Gpt
