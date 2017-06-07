@@ -242,7 +242,7 @@ module Y2Storage
       if part_description["partition_nr"]
         devicegraph.partitions.find { |p| p.number == part_description["partition_nr"] }
       elsif part_description["label"]
-        devicegraph.partitions.find { |p| p.number == part_description["filesystem_label"] }
+        devicegraph.partitions.find { |p| p.filesystem_label == part_description["label"] }
       end
     end
 
