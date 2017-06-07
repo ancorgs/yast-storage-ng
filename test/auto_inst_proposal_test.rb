@@ -151,6 +151,8 @@ describe Y2Storage::AutoInstProposal do
 
       context "when the device should be initialized" do
         let(:partitioning) { [{ "device" => "/dev/sda", "partitions" => [root], "initialize" => true }] }
+        let(:boot_checker) { double("Y2Storage::BootRequirementsChecker", needed_partitions: []) }
+        before { allow(Y2Storage::BootRequirementsChecker).to receive(:new).and_return boot_checker }
 
         it "removes the old partitions" do
           proposal.propose
