@@ -74,7 +74,7 @@ module Y2Storage
         xfs:      {
           name: "XFS"
         },
-        iso9669:  {
+        iso9660:  {
           name: "ISO9660"
         },
         udf:      {
@@ -100,6 +100,17 @@ module Y2Storage
       # @return [Array<Filesystems::Type>]
       def self.home_filesystems
         HOME_FILESYSTEMS.map { |f| find(f) }
+      end
+
+      def self.default_for(mountpoint)
+        case mountpoint
+        when "/"
+          BTRFS
+        when "swap"
+          SWAP
+        else
+          XFS
+        end
       end
 
       # Check if filesystem is usable as root (mountpoint "/") filesystem.
@@ -132,7 +143,7 @@ module Y2Storage
       #
       # @return [String]
       def to_human_string
-        default = ""
+        default = to_s
         properties = PROPERTIES[to_sym]
         return default unless properties
         properties[:name] || default

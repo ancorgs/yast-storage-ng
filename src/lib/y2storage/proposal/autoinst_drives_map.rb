@@ -21,8 +21,6 @@
 # To contact SUSE LLC about this file by physical or electronic mail, you may
 # find current contact information at www.suse.com.
 
-require "y2storage/proposal/skip_list"
-
 module Y2Storage
   module Proposal
     # Utility class to map disk names to the corresponding AutoYaST <drive>
@@ -52,12 +50,12 @@ module Y2Storage
       # @param partitioning [Array<Hash>] Partitioning layout from an AutoYaST profile
       def initialize(devicegraph, partitioning)
         # By now, consider only regular disks
-        disks = partitioning.select { |i| i.fetch("type", :CT_DISK) == :CT_DISK }
+        disks = partitioning.disk_drives
 
         # First, assign fixed drives
-        fixed_drives, flexible_drives = disks.partition { |i| i["device"] && !i["device"].empty? }
+        fixed_drives, flexible_drives = disks.partition { |i| i.device }
         @drives = fixed_drives.each_with_object({}) do |disk, memo|
-          memo[disk["device"]] = disk
+          memo[disk.device] = disk
         end
 
         flexible_drives.each do |drive|
@@ -94,18 +92,18 @@ module Y2Storage
       #   map = AutoinstMap.new(devicegraph, profile)
       #   map.partitions? # => false
       def partitions?
-        @drives.values.any? { |i| !i.fetch("partitions", []).empty? }
+        @drives.values.any? { |i| !i.partitions.empty? }
       end
 
     protected
 
       # Find the first usable disk for the given <drive> AutoYaST specification
       #
-      # @param drive_spec  [Hash] AutoYaST drive specification
+      # @param drive  [AutoinstProfile::DriveSection] AutoYaST drive specification
       # @param devicegraph [Devicegraph] Devicegraph
       # @return [Disk,nil] Usable disk or nil if none is found
-      def first_usable_disk(drive_spec, devicegraph)
-        skip_list = SkipList.from_profile(drive_spec.fetch("skip_list", []))
+      def first_usable_disk(drive, devicegraph)
+        skip_list = drive.skip_list
 
         devicegraph.disk_devices.each do |disk|
           next if disk_names.include?(disk.name)

@@ -19,10 +19,10 @@
 # To contact SUSE LLC about this file by physical or electronic mail, you may
 # find current contact information at www.suse.com.
 
-require "y2storage/proposal/skip_list_value"
+require "y2storage/autoinst_profile/skip_list_value"
 
 module Y2Storage
-  module Proposal
+  module AutoinstProfile
     # AutoYaST device skip rule
     #
     # @example Using a rule
@@ -82,6 +82,16 @@ module Y2Storage
             end
           new(hash["skip_key"], predicate, hash["skip_value"])
         end
+      end
+
+      def to_profile_rule
+        result = {"skip_key" => key, "skip_value" => raw_reference}
+        if predicate == :less_than
+          result["skip_if_less_than"] = true
+        elsif predicate == :more_than
+          result["skip_if_more_than"] = true
+        end
+        result
       end
 
       # Constructor
