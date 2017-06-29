@@ -24,5 +24,35 @@ require_relative "../spec_helper"
 require "y2storage"
 
 describe Y2Storage::AutoinstProfile::PartitioningSection do
-  pending
+  describe ".new_from_hashes" do
+    it "returns a new PartitioningSection object" do
+    end
+
+    it "creates an entry in #drives for every valid hash in the array" do
+    end
+
+    # In fact, I don't think DriveSection.new_from_hashes can return nil, but
+    # just in case...
+    it "ignores hashes that couldn't be converted into DriveSection objects" do
+    end
+  end
+
+  describe ".new_from_storage" do
+    it "returns a new PartitioningSection object" do
+    end
+
+    it "creates an entry in #drives for every relevant disk and DASD" do
+    end
+
+    it "ignores irrelevant drives" do
+    end
+  end
+
+  describe "#to_hashes" do
+    it "returns an array of hashes" do
+    end
+
+    it "includes a hash for every drive" do
+    end
+  end
 end
