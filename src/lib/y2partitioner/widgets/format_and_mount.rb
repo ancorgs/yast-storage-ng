@@ -22,47 +22,68 @@ module Y2Partitioner
 
       # Constructor
       # @param options [FormatMount::Options]
-      def initialize(options)
+      def initialize(controller)
         textdomain "storage"
 
-        @options = options
-        @encrypt_widget    = EncryptBlkDevice.new(@options)
-        @filesystem_widget = BlkDeviceFilesystem.new(@options)
-        @format_options    = FormatOptionsButton.new(@options)
-        @partition_id      = PartitionId.new(@options)
+        @controller = controller
+        @encrypt_widget    = EncryptBlkDevice.new(@controller)
+        @filesystem_widget = BlkDeviceFilesystem.new(@controller)
+        @format_options    = FormatOptionsButton.new(@controller)
+        @partition_id      = PartitionId.new(@controller)
 
         self.handle_all_events = true
       end
 
-      # It disable the format option if the current filesystem is not
-      # formattable or the selected partition does not allow format
       def init
-        if @options.filesystem_type && !@options.filesystem_type.formattable?
-          disable_format
-        else
-          Yast::UI.ChangeWidget(Id(:no_format_device), :Enabled, true)
-          @options.format ? select_format : select_no_format
-
-          @options.partition_id.formattable? ? enable_format : disable_format
-        end
+        puts "er puto init"
+        refresh
       end
 
-      def store
-        @options.format = format?
+      def refresh
+        puts "refresh format options"
+        @encrypt_widget.refresh
+        @filesystem_widget.refresh
+        @partition_id.refresh
+
+        if controller.to_be_formatted?
+          Yast::UI.ChangeWidget(Id(:format_device), :Value, true)
+
+          @encrypt_widget.enable
+          @filesystem_widget.enable
+          @format_options.enable
+          @partition_id.disable
+        else
+          Yast::UI.ChangeWidget(Id(:no_format_device), :Value, true)
+
+          # If there is already a filesystem we want to respect, we can't decide
+          # on the encryption value
+          controller.filesystem ? @encrypt_widget.disable : @encrypt_widget.enable
+          @filesystem_widget.disable
+          @format_options.disable
+          @partition_id.enable
+        end
+        puts "fin refresh format options"
       end
 
       def handle(event)
+        puts "super handle #{event['ID']}"
+        result = widget_id.to_sym
+
         case event["ID"]
         when :format_device
           select_format
+        when @filesystem_widget.widget_id
+          select_format
         when :no_format_device
           select_no_format
-        when @filesystem_widget.widget_id
-          return :redraw_filesystem
         when @partition_id.widget_id
-          return :redraw_partition_id
+          select_no_format
+        else
+          result = nil
         end
 
+        puts "end super handle: #{result}"
+        result
         nil
       end
 
@@ -115,34 +136,19 @@ module Y2Partitioner
 
     private
 
+      attr_reader :controller
+
       def select_format
-        @filesystem_widget.enable
-        @format_options.enable
-        @partition_id.disable
-        Yast::UI.ChangeWidget(Id(:format_device), :Value, true)
-        @format = true
+        controller.new_filesystem(@filesystem_widget.value)
+        puts "yo"
+        refresh
       end
 
       def select_no_format
-        @filesystem_widget.disable
-        @format_options.disable
-        @partition_id.enable
-
-        Yast::UI.ChangeWidget(Id(:no_format_device), :Value, true)
-        @format = false
-      end
-
-      def format?
-        Yast::UI::QueryWidget(Id(:format_device), :Value)
-      end
-
-      def disable_format
-        select_no_format
-        Yast::UI.ChangeWidget(Id(:format_device), :Enabled, false)
-      end
-
-      def enable_format
-        Yast::UI.ChangeWidget(Id(:format_device), :Enabled, true)
+        controller.dont_format
+        controller.partition_id = @partition_id.value
+        puts "otro yo"
+        refresh
       end
     end
 
@@ -150,35 +156,49 @@ module Y2Partitioner
     class MountOptions < CWM::CustomWidget
       using Refinements::FilesystemType
 
-      def initialize(options)
+      def initialize(controller)
         textdomain "storage"
 
-        @options = options
+        @controller = controller
 
-        @mount_point_widget = MountPoint.new(@options)
-        @fstab_options_widget = FstabOptionsButton.new(@options)
+        @mount_point_widget = MountPoint.new(controller)
+        @fstab_options_widget = FstabOptionsButton.new(controller)
 
         self.handle_all_events = true
       end
 
-      def reload
-        @mount_point_widget.init
+      def filesystem
+        @controller.filesystem
       end
 
       def init
-        if !@options.partition_id.formattable? || !@options.filesystem_type.formattable?
-          Yast::UI.ChangeWidget(Id(:mount_device), :Enabled, false)
-          @options.mount = nil
-        end
+        refresh
+      end
 
-        if @options.mount
-          @fstab_options_widget.enable
-          Yast::UI.ChangeWidget(Id(:mount_device), :Value, true)
+      def refresh
+        puts "refresco mount opt"
+        @mount_point_widget.refresh
+
+        if filesystem
+          Yast::UI.ChangeWidget(Id(:mount_device), :Enabled, true)
+
+          if filesystem.mountpoint.nil? || filesystem.mountpoint.empty?
+            Yast::UI.ChangeWidget(Id(:no_mount_device), :Value, true)
+            @mount_point_widget.disable
+            @fstab_options_widget.disable
+          else
+            Yast::UI.ChangeWidget(Id(:mount_device), :Value, true)
+            @mount_point_widget.enable
+            @fstab_options_widget.enable
+          end
         else
+          Yast::UI.ChangeWidget(Id(:mount_device), :Enabled, false)
+
+          Yast::UI.ChangeWidget(Id(:no_mount_device), :Value, true)
           @mount_point_widget.disable
           @fstab_options_widget.disable
-          Yast::UI.ChangeWidget(Id(:no_mount_device), :Value, true)
         end
+        puts "fin refresco mount opt"
       end
 
       def contents
@@ -208,39 +228,28 @@ module Y2Partitioner
       end
 
       def handle(event)
+        puts "handle mount opts #{event['ID']}"
+        mountpoint = @mount_point_widget.value.to_s
+
         case event["ID"]
         when :mount_device
+          @controller.filesystem.mountpoint = mountpoint
+          @fstab_options_widget.enable
           @mount_point_widget.enable
-          if @mount_point_widget.value.to_s.empty?
-            @fstab_options_widget.disable
-          else
-            @fstab_options_widget.enable
-          end
         when :no_mount_device
           @fstab_options_widget.disable
           @mount_point_widget.disable
         when @mount_point_widget.widget_id
-          if @mount_point_widget.value.to_s.empty?
+          @controller.filesystem.mountpoint = mountpoint
+          if mountpoint.nil? || mountpoint.empty?
             @fstab_options_widget.disable
           else
             @fstab_options_widget.enable
           end
         end
 
+        puts "end handle mount opts: nil"
         nil
-      end
-
-      def store
-        @options.mount = mount?
-        @options.mount_point = @mount_point_widget.value
-
-        nil
-      end
-
-    private
-
-      def mount?
-        Yast::UI.QueryWidget(Id(:mount_device), :Value)
       end
     end
 
@@ -248,10 +257,10 @@ module Y2Partitioner
     class BlkDeviceFilesystem < CWM::ComboBox
       SUPPORTED_FILESYSTEMS = %i(swap btrfs ext2 ext3 ext4 vfat xfs).freeze
 
-      def initialize(options)
+      def initialize(controller)
         textdomain "storage"
 
-        @options = options
+        @controller = controller
       end
 
       def opt
@@ -259,8 +268,14 @@ module Y2Partitioner
       end
 
       def init
-        fs_type = @options.filesystem_type
+        refresh
+      end
+
+      def refresh
+        puts "cambio filesystem"
+        fs_type = @controller.filesystem_type
         self.value = fs_type ? fs_type.to_sym : nil
+        puts "cambié filesystem"
       end
 
       def label
@@ -268,15 +283,9 @@ module Y2Partitioner
       end
 
       def items
-        return [] unless @options.filesystem_type
-
         Y2Storage::Filesystems::Type.all.select { |fs| supported?(fs) }.map do |fs|
           [fs.to_sym, fs.to_human_string]
         end
-      end
-
-      def store
-        @options.filesystem_type = value ? Y2Storage::Filesystems::Type.find(value) : value
       end
 
     private
@@ -289,8 +298,8 @@ module Y2Partitioner
     # Push Button that launches a dialog to set speficic options for the
     # selected filesystem
     class FormatOptionsButton < CWM::PushButton
-      def initialize(options)
-        @options = options
+      def initialize(controller)
+        @controller = controller
       end
 
       def opt
@@ -314,12 +323,18 @@ module Y2Partitioner
 
       # Constructor
       # @param options [FormatMount::Options]
-      def initialize(options)
-        @options = options
+      def initialize(controller)
+        @controller = controller
       end
 
       def init
-        self.value = @options.mount_point
+        refresh
+      end
+
+      def refresh
+        puts "cambio mountpoint"
+        self.value = @controller.mount_point
+        puts "cambié mountpoint"
       end
 
       def label
@@ -328,10 +343,6 @@ module Y2Partitioner
 
       def opt
         %i(editable hstretch notify)
-      end
-
-      def store
-        @options.mount_point = value
       end
 
       def items
@@ -435,24 +446,12 @@ module Y2Partitioner
         filesystem.btrfs_subvolumes.select { |s| !s.top_level? && !s.default_btrfs_subvolume? }
       end
 
-      # Current device
-      # @return [Y2Storage::BlkDevice, nil]
-      def device
-        return nil if @options.name.nil?
-        Y2Storage::BlkDevice.find_by_name(device_graph, @options.name)
-      end
-
-      # Filesystem for the current device
-      # @return [Y2Storage::Filesystems::BlkFilesystem, nil]
-      def filesystem
-        dev = device
-        return nil if dev.nil?
-
-        dev.filesystem
-      end
-
       def device_graph
         DeviceGraphs.instance.current
+      end
+
+      def filesystem
+        @controller.filesystem
       end
     end
 
@@ -460,25 +459,32 @@ module Y2Partitioner
     class EncryptBlkDevice < CWM::CheckBox
       using Refinements::FilesystemType
 
-      def initialize(options)
-        @options = options
+      def initialize(controller)
+        @controller = controller
       end
 
       def label
         _("Encrypt Device")
       end
 
-      def init
-        if @options.filesystem_type && !@options.filesystem_type.encryptable?
-          self.value = false
-          disable
-        else
-          self.value = @options.encrypt
-        end
+      def opt
+        %i(notify)
       end
 
-      def store
-        @options.encrypt = value
+      def init
+        refresh
+      end
+
+      def refresh
+        puts "cambio encr"
+        self.value = @controller.encrypt
+        puts "cambie enct"
+      end
+
+      def handle(event)
+        puts "manejo enc"
+        @controller.encrypt = value if event["ID"] == widget_id
+        nil
       end
     end
 
@@ -525,21 +531,22 @@ module Y2Partitioner
 
     # Partition identifier selector
     class PartitionId < CWM::ComboBox
-      def initialize(options)
-        @options = options
+      def initialize(controller)
+        @controller = controller
       end
 
       def opt
         %i(hstretch notify)
       end
 
-      # FIXME: initialize with the correct value
       def init
-        self.value = @options.partition_id.to_sym
+        refresh
       end
 
-      def store
-        @options.partition_id = Y2Storage::PartitionId.find(value)
+      def refresh
+        puts "cambio part: #{@controller.partition_id}"
+        self.value = @controller.partition_id.to_sym
+        puts "cambié part: #{@controller.partition_id}"
       end
 
       def label

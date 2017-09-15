@@ -7,27 +7,30 @@ module Y2Partitioner
     # Part of {Sequences::AddPartition} and {Sequences::EditBlkDevice}.
     # Formerly MiniWorkflowStepFormatMount
     class FormatAndMount < CWM::Dialog
-      # @param options [Y2Partitioner::FormatMount::Options]
-      def initialize(options)
+      # @param options [Sequences::FilesystemController]
+      def initialize(controller)
         textdomain "storage"
 
-        @options = options
+        @controller = controller
+        @format_options = Widgets::FormatOptions.new(controller)
+        @mount_options = Widgets::MountOptions.new(controller)
       end
 
       def title
-        "Edit Partition #{@options.name}"
+        "Edit Partition #{@controller.blk_device.name}"
       end
 
       def contents
         HVSquash(
           HBox(
-            Widgets::FormatOptions.new(@options),
+            @format_options,
             HSpacing(5),
-            Widgets::MountOptions.new(@options)
+            @mount_options
           )
         )
       end
 
+=begin
       def cwm_show
         ret = nil
 
@@ -35,10 +38,8 @@ module Y2Partitioner
           ret = super
 
           case ret
-          when :redraw_partition_id
-            redraw_partition_id
-          when :redraw_filesystem
-            redraw_filesystem
+          when @format_options.widget_id.to_sym
+            @mount_options.refresh
           else
             break
           end
@@ -46,14 +47,7 @@ module Y2Partitioner
 
         ret
       end
-
-      def redraw_partition_id
-        @options.options_for_partition_id(@options.partition_id)
-      end
-
-      def redraw_filesystem
-        @options.update_filesystem_options!
-      end
+=end
     end
   end
 end
