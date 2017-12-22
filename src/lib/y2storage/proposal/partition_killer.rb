@@ -50,10 +50,79 @@ module Y2Storage
         partition = find_partition(device_name)
         return [] unless partition
 
-        if lvm_vg?(partition)
-          delete_lvm_partitions(partition)
+        if bios_raid?(partition)
+          log.info "Not deleting #{partition.name} because belongs to a BIOS RAID"
+          return []
+        end
+
+        if raid_or_lvm?(partition)
+          delete_devices(partition)
         else
           delete_partition(partition)
+        end
+      end
+
+      # Maybe change param to name if we make it public somehow
+          # tengo que devolver lista de parts borradas
+      def delete_devices(partition)
+        partitions_to_delete = []
+
+        raid = software_raid(partition)
+        if raid
+          if spare_device?(partition)
+            remove_from_raid(partition)
+            pv = nil
+          else
+            partitions_to_delete << select_delete_partitions(raid.plain_devices)
+            pv = raid.lvm_pv
+            devicegraph.remove_raid(raid)
+          end
+        else
+          pv = partition.lvm_pv
+        end
+        
+        if pv
+          #log.info "Deleting #{partition.name}, which is part of an LVM volume group"
+          vg = partition.lvm_pv.lvm_vg
+          delete_lvm_devices(vg.vg_name)
+        end
+
+        delete_partition(partition)
+      end
+
+      # Deletes all the partitions in the candidate disks that are part of the
+      # given LVM volume group
+      #
+      # Rationale: when deleting one of the physical volumes of a given VG, we
+      # are effectively killing the whole VG. It makes no sense to leave the
+      # other PVs alive. So let's reclaim all the space.
+      #
+      # @param vg_name [String] the name of the LVM VG
+      # @return [Array<String>] device names of all the deleted partitions
+      def delete_lvm_devices(vg_name)
+        vg = find_lvm_vg(vg_name)
+        plain_blk_devs = vg.lvm_pvs.map(&:plain_blk_device)
+
+        partitions_to_delete = select_delete_partitions(plain_blk_devs)
+
+        raids_to_delete = plain_blk_devs.select { |dev| dev.is?(:raid) && dev.software_defined? }
+        raid_devices = raids_to_delete.map(&:plain_devices).flatten
+        partitions_to_delete.concat(select_delete_partitions(raid_devices))
+        raid_names = raids_to_delete.map(&:name)
+
+        target_partitions = partitions_to_delete.map { |p| find_partition(p.name) }.compact
+
+        log.info "The #{vg.name} VG is not longer useful. It will deleted together with its PVs"
+        devicegraph.remove_lvm_vg(vg)
+
+        log.info "These LVM partitions will be deleted: #{target_partitions.map(&:name)}"
+        target_partitions.each { |p| delete_partition(p) }
+
+        log.info "Matemos a los software raids que sobrevivieron"
+        raid_names.each do |name|
+          raid = devicegraph.find_by_name(name)
+          next unless raid
+          devicegraph.remove_md(raid)
         end
       end
 
@@ -61,8 +130,14 @@ module Y2Storage
 
       attr_reader :devicegraph, :disks
 
+      # Partition with the given name
       def find_partition(name)
-        devicegraph.partitions.detect { |part| part.name == name }
+        devicegraph.find_by_name(name)
+      end
+
+      # Volume group with the given name
+      def find_lvm_vg(name)
+        LvmVg.find_by_vg_name(devicegraph, name)
       end
 
       # Deletes a given partition from its corresponding partition table.
@@ -111,32 +186,18 @@ module Y2Storage
         logical_parts.size == 1
       end
 
-      # Deletes the given partition and all other partitions in the candidate
-      # disks that are part of the same LVM volume group
-      #
-      # Rationale: when deleting a partition that holds a PV of a given VG, we
-      # are effectively killing the whole VG. It makes no sense to leave the
-      # other PVs alive. So let's reclaim all the space.
-      #
-      # @param partition [Partition] A partition that is acting as
-      #   LVM physical volume
-      # @return [Array<String>] device names of all the deleted partitions
-      def delete_lvm_partitions(partition)
-        log.info "Deleting #{partition.name}, which is part of an LVM volume group"
-        vg = partition.lvm_pv.lvm_vg
-        partitions_to_delete = vg.lvm_pvs.map(&:plain_blk_device).select { |dev| dev.is?(:partition) }
-        partitions_to_delete.select! { |p| disks.include?(p.partitionable.name) } if disks
-        target_partitions = partitions_to_delete.map { |p| find_partition(p.name) }.compact
-        log.info "These LVM partitions will be deleted: #{target_partitions.map(&:name)}"
-        target_partitions.map { |p| delete_partition(p) }
-      end
-
       # Checks whether the partition is part of a volume group
       #
       # @param partition [Partition]
       # @return [Boolean]
       def lvm_vg?(partition)
         !!(partition.lvm_pv && partition.lvm_pv.lvm_vg)
+      end
+
+      def select_delete_partitions(devices)
+        to_delete = devices.select { |dev| dev.is?(:partition) }
+        to_delete.select! { |part| disks.include?(part.partitionable.name) } if disks
+        to_delete
       end
     end
   end

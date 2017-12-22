@@ -182,6 +182,16 @@ module Y2Storage
       Md.sorted_by_name(self)
     end
 
+    # All RAIDs in de devicegraph, sorted by name
+    #
+    # This includes RAIDs of all technologies (MD, DM, etc.)
+    #
+    # @return [Array<BlkDevice>]
+    def raids
+      devices = Md.all(self) + DmRaid.all(self)
+      devices.sort { |a, b| a.compare_by_name(b) }
+    end
+
     # All MD BIOS RAIDs in the devicegraph, sorted by name
     #
     # @note The class MdMember is used by libstorage-ng to represent MD BIOS RAIDs.

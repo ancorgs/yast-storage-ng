@@ -288,7 +288,7 @@ module Y2Storage
     end
 
     def types_for_is
-      super << :md
+      super.concat([:md, :raid])
     end
   end
 end

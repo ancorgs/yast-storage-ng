@@ -28,7 +28,7 @@
       <sysfs-path>/devices/pci0000:00/0000:00:01.1/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda1</sysfs-path>
       <region>
         <start>2048</start>
-        <length>25669632</length>
+        <length>32714752</length>
         <block-size>512</block-size>
       </region>
       <udev-path>pci-0000:00:01.1-ata-1-part1</udev-path>
@@ -89,7 +89,7 @@
       <sysfs-path>/devices/pci0000:00/0000:00:01.1/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda5</sysfs-path>
       <region>
         <start>36913152</start>
-        <length>4194304</length>
+        <length>17612767</length>
         <block-size>512</block-size>
       </region>
       <udev-path>pci-0000:00:01.1-ata-1-part5</udev-path>

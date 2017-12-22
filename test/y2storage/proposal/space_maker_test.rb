@@ -24,9 +24,9 @@ require_relative "../spec_helper"
 require "y2storage"
 
 describe Y2Storage::Proposal::SpaceMaker do
-  # Partition from fake_devicegraph, fetched by name
-  def probed_partition(name)
-    fake_devicegraph.partitions.detect { |p| p.name == name }
+  # Device from fake_devicegraph, fetched by name
+  def probed_device(name)
+    fake_devicegraph.find_by_name(name)
   end
 
   before do
@@ -110,8 +110,27 @@ describe Y2Storage::Proposal::SpaceMaker do
         expect(result.partitions.map(&:name)).to_not include "/dev/sda3", "/dev/sde2"
       end
 
-      it "deletes partitions with id raid" do
-        skip "Let's wait until we have some meaningful RAID scenarios"
+      context "when there are RAID partitions" do
+        let(:scenario) { "lvm-and-raid.xml" }
+        before { settings.candidate_devices = fake_devicegraph.disk_devices.map(&:name) }
+
+        it "deletes partitions with id raid belonging to a software RAID" do
+          result = maker.delete_unwanted_partitions(fake_devicegraph)
+          expect(result.partitions.map(&:name)).to_not include(
+            "/dev/sda1", "/dev/sda2", "/dev/sda5", "/dev/sdc1"
+          )
+        end
+
+        it "deletes partitions with id raid not belonging to any RAID" do
+          fake_devicegraph.remove_md(fake_devicegraph.find_by_name("/dev/md0"))
+          result = maker.delete_unwanted_partitions(fake_devicegraph)
+          expect(result.partitions.map(&:name)).to_not include "/dev/sda1", "/dev/sda5"
+        end
+
+        it "does not delete partitions with id raid belonging to a BIOS RAID" do
+          result = maker.delete_unwanted_partitions(fake_devicegraph)
+          expect(result.partitions.map(&:name)).to include "/dev/sde1", "/dev/sde2"
+        end
       end
 
       it "does not delete any other partition" do
@@ -656,7 +675,7 @@ describe Y2Storage::Proposal::SpaceMaker do
         vol1 = planned_vol(mount_point: "/1", type: :ext4, min: 100.GiB)
         vol2 = planned_vol(mount_point: "/2", reuse: "/dev/sda6")
         volumes = [vol1, vol2]
-        sda6 = probed_partition("/dev/sda6")
+        sda6 = probed_device("/dev/sda6")
 
         result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
         expect(result[:devicegraph].partitions.map(&:sid)).to include sda6.sid
@@ -795,16 +814,15 @@ describe Y2Storage::Proposal::SpaceMaker do
     end
 
     context "when deleting a partition which belongs to a LVM" do
-      let(:scenario) { "lvm-two-vgs" }
-      let(:windows_partitions) { [partition_double("/dev/sda1")] }
-      let(:volumes) { [planned_vol(mount_point: "/1", type: :ext4, min: 2.GiB)] }
-
-      it "deletes also other partitions of the same volume group" do
-        result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
-        partitions = result[:devicegraph].partitions
-
-        expect(partitions.map(&:sid)).to_not include probed_partition("/dev/sda9").sid
-        expect(partitions.map(&:sid)).to_not include probed_partition("/dev/sda5").sid
+      let(:scenario) { "lvm-and-raid.xml" }
+      let(:volumes) { [planned_vol(mount_point: "/1", type: :ext4, min: 2.GiB, disk: "/dev/sdg")] }
+      before do
+        settings.candidate_devices = fake_devicegraph.disk_devices.map(&:name)
+        vg1 = probed_device("/dev/vg1")
+        vg2 = probed_device("/dev/vg2")
+        vg1.add_lvm_pv(probed_device("/dev/md0"))
+        vg1.add_lvm_pv(probed_device("/dev/md2"))
+        vg2.add_lvm_pv(probed_device("/dev/md1"))
       end
 
       it "deletes the volume group itself" do
@@ -813,12 +831,48 @@ describe Y2Storage::Proposal::SpaceMaker do
         expect(result[:devicegraph].lvm_vgs.map(&:vg_name)).to_not include "vg1"
       end
 
-      it "does not affect partitions from other volume groups" do
+      it "deletes also other partitions of the same volume group" do
         result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
-        devicegraph = result[:devicegraph]
+        partitions = result[:devicegraph].partitions
 
-        expect(devicegraph.partitions.map(&:name)).to include "/dev/sda7"
-        expect(devicegraph.lvm_vgs.map(&:vg_name)).to include "vg0"
+        expect(partitions.map(&:sid)).to_not include probed_device("/dev/sda3").sid
+      end
+
+      it "deletes also other software RAIDs on the same VG and their partitions" do
+        result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+        graph = result[:devicegraph]
+
+        expect(graph.raids.map(&:name)).to_not include "/dev/md0"
+        partitions = graph.partitions.map(&:sid)
+        expect(partitions).to_not include probed_device("/dev/sda1").sid
+        expect(partitions).to_not include probed_device("/dev/sda5").sid
+      end
+
+      it "does not delete other BIOS RAIDs on the same VG" do
+        result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+        graph = result[:devicegraph]
+
+        expect(graph.raids.map(&:name)).to include "/dev/md2"
+      end
+
+      it "does not affect other partitions or other volume groups" do
+        result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+        graph = result[:devicegraph]
+
+        expect(graph.lvm_vgs.map(&:vg_name)).to include "vg2"
+        partitions = graph.partitions.map(&:sid)
+        expected_partitions = %w(/dev/sda2 /dev/sda4 /dev/sdc1 /dev/sde1 /dev/sde2)
+        expected_partitions.map! { |name| probed_device(name).sid }
+        expect(partitions).to match_array expected_partitions
+      end
+
+      it "deletes all the PV devices associated to the VG, even if the block device endures" do
+        result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+        graph = result[:devicegraph]
+
+        expect(graph.lvm_pvs.none? { |pv| pv.lvm_vg.nil? }).to eq true
+        expect(fake_devicegraph.find_by_name("/dev/md2").lvm_pv).to_not be_nil
+        expect(graph.find_by_name("/dev/md2").lvm_pv).to be_nil
       end
     end
 
@@ -843,10 +897,10 @@ describe Y2Storage::Proposal::SpaceMaker do
         partitions = result[:devicegraph].partitions
 
         # sda5 and sda9 belong to vg1
-        expect(partitions.map(&:sid)).to include probed_partition("/dev/sda9").sid
-        expect(partitions.map(&:sid)).to include probed_partition("/dev/sda5").sid
+        expect(partitions.map(&:sid)).to include probed_device("/dev/sda9").sid
+        expect(partitions.map(&:sid)).to include probed_device("/dev/sda5").sid
         # sda8 is deleted instead of sda9
-        expect(partitions.map(&:sid)).to_not include probed_partition("/dev/sda8").sid
+        expect(partitions.map(&:sid)).to_not include probed_device("/dev/sda8").sid
       end
 
       it "does nothing special about partitions from other VGs" do
@@ -855,7 +909,7 @@ describe Y2Storage::Proposal::SpaceMaker do
         partitions = result[:devicegraph].partitions
 
         # sda7 belongs to vg0
-        expect(partitions.map(&:sid)).to_not include probed_partition("/dev/sda7").sid
+        expect(partitions.map(&:sid)).to_not include probed_device("/dev/sda7").sid
       end
 
       it "raises NoDiskSpaceError if it cannot find space respecting the VG" do
@@ -869,6 +923,81 @@ describe Y2Storage::Proposal::SpaceMaker do
         ]
         expect { maker.provide_space(fake_devicegraph, volumes, lvm_helper) }
           .to raise_error Y2Storage::Error
+      end
+    end
+
+    context "when deleting a partition which belongs to a software RAID" do
+      # P31 sin PV opcional
+      let(:scenario) { "subvolumes-and-empty-md.xml" }
+      let(:volumes) { [planned_vol(mount_point: "/1", type: :ext4, min: 2.GiB)] }
+
+      context "if it is a spare device" do
+        # Mock o p5 siendo este spare
+        it "deletes the partition" do
+        end
+
+        it "does not affect any other partition" do
+        end
+
+        it "does not delete the MD RAID" do
+        end
+      end
+
+      context "if it is not a spare device" do
+        it "deletes also other partitions of the same RAID" do
+          result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+          partitions = result[:devicegraph].partitions
+
+          expect(partitions.map(&:sid)).to_not include probed_device("/dev/sda9").sid
+          expect(partitions.map(&:sid)).to_not include probed_device("/dev/sda5").sid
+        end
+
+        it "deletes the MD RAID" do
+          result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+
+          expect(result[:devicegraph].lvm_vgs.map(&:vg_name)).to_not include "vg1"
+        end
+
+        it "does not affect other partitions" do
+          result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+          devicegraph = result[:devicegraph]
+
+          expect(devicegraph.partitions.map(&:name)).to include "/dev/sda7"
+          expect(devicegraph.lvm_vgs.map(&:vg_name)).to include "vg0"
+        end
+        
+        context "if the RAID belongs to an LVM volume group" do
+          # P31
+          # PV adicional en su raid a LVM2
+          # PV adicional en el otro raid a LVM2
+          it "deletes the volume group itself" do
+            result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+
+            expect(result[:devicegraph].lvm_vgs.map(&:vg_name)).to_not include "vg1"
+          end
+
+          it "deletes also other partitions of the same volume group" do
+            result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+            partitions = result[:devicegraph].partitions
+
+            expect(partitions.map(&:sid)).to_not include probed_device("/dev/sda9").sid
+            expect(partitions.map(&:sid)).to_not include probed_device("/dev/sda5").sid
+          end
+
+          it "deletes also other software RAIDs on the same VG and their partitions" do
+          end
+
+          it "does not delete other BIOS RAIDs on the same VG or their partitions" do
+          end
+
+          it "does not affect other partitions" do
+            result = maker.provide_space(fake_devicegraph, volumes, lvm_helper)
+            devicegraph = result[:devicegraph]
+
+            expect(devicegraph.partitions.map(&:name)).to include "/dev/sda7"
+            expect(devicegraph.lvm_vgs.map(&:vg_name)).to include "vg0"
+          end
+        end
       end
     end
   end

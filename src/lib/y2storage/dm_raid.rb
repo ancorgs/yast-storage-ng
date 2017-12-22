@@ -70,7 +70,7 @@ module Y2Storage
   protected
 
     def types_for_is
-      super << :dm_raid
+      super.concat([:dm_raid, :raid])
     end
   end
 end

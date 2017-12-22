@@ -1,0 +1,121 @@
+---
+# One partitioned disk
+- disk:
+    name: /dev/sda
+    size: 50 GiB
+    partition_table:  gpt
+    partitions:
+
+    - partition:
+        size:         10 GiB
+        name:         /dev/sda1
+        id:           raid
+
+    - partition:
+        size:         10 GiB
+        name:         /dev/sda2
+        id:           raid
+
+    - partition:
+        size:         10 GiB
+        name:         /dev/sda3
+        id:           lvm
+
+    - partition:
+        size:         10 GiB
+        name:         /dev/sda4
+        id:           lvm
+        encryption:
+          name:       /dev/mapper/cr_sda4
+
+    - partition:
+        size:         unlimited
+        name:         /dev/sda5
+        id:           raid
+
+# An encrypted disk to be used in a RAID
+- disk:
+    name: /dev/sdb
+    size: 50 GiB
+    encryption:
+      name:       /dev/mapper/cr_sdb
+
+# Disk with only one partition to be used in a RAID
+- disk:
+    name: /dev/sdc
+    size: 50 GiB
+    partition_table:  gpt
+    partitions:
+
+    - partition:
+        size:         unlimited
+        name:         /dev/sdc1
+        id:           raid
+
+# Disk to be used as PV
+- disk:
+    name: /dev/sdd
+    size: 50 GiB
+
+
+# Disk with two partitions to be used in a RAID
+- disk:
+    name: /dev/sde
+    size: 50 GiB
+    partition_table:  gpt
+    partitions:
+
+    - partition:
+        size:         25 GiB
+        name:         /dev/sde1
+        id:           raid
+
+    - partition:
+        size:         unlimited
+        name:         /dev/sde2
+        id:           raid
+
+# Disk to be used in a RAID
+- disk:
+    name: /dev/sdf
+    size: 50 GiB
+
+# Disk with only one partition used as PV
+- disk:
+    name: /dev/sdg
+    size: 50 GiB
+    partition_table:  gpt
+    partitions:
+
+    - partition:
+        size:         unlimited
+        name:         /dev/sdg1
+        id:           lvm
+        encryption:
+          name:       /dev/mapper/cr_sdg1
+
+- lvm_vg:
+    vg_name: vg1
+    lvm_pvs:
+        - lvm_pv:
+            blk_device: /dev/sda3
+        - lvm_pv:
+            blk_device: /dev/mapper/cr_sdg1
+
+    lvm_lvs:
+        - lvm_lv:
+            size:         2 GiB
+            lv_name:      lv1
+            file_system:  ext4
+- lvm_vg:
+    vg_name: vg2
+    lvm_pvs:
+        - lvm_pv:
+            blk_device: /dev/mapper/cr_sda4
+        - lvm_pv:
+            blk_device: /dev/sdd
+    lvm_lvs:
+        - lvm_lv:
+            size:         5 GiB
+            lv_name:      lv1
+            file_system:  ext4
