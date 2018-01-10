@@ -233,8 +233,10 @@ describe Y2Storage::AutoinstProposal do
       end
 
       before do
-        allow_any_instance_of(Y2Storage::Partition).to receive(:detect_resize_info)
-          .and_return(resize_info)
+        allow_any_instance_of(Y2Storage::Partition).to receive(:detect_resize_info) do
+          puts "AQUIIIIIIII5"
+          resize_info
+        end
       end
 
       it "sets the partitions' size" do
@@ -401,8 +403,10 @@ describe Y2Storage::AutoinstProposal do
       end
 
       before do
-        allow_any_instance_of(Y2Storage::LvmLv).to receive(:detect_resize_info)
-          .and_return(resize_info)
+        allow_any_instance_of(Y2Storage::LvmLv).to receive(:detect_resize_info) do
+          puts "AQUIIIIIII13"
+          resize_info
+        end
       end
 
       it "sets the partitions' size" do

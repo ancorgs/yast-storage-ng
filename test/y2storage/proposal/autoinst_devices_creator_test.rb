@@ -147,6 +147,7 @@ describe Y2Storage::Proposal::AutoinstDevicesCreator do
 
       before do
         allow_any_instance_of(Y2Storage::Partition).to receive(:detect_resize_info) do |part|
+          puts "AQUIIIIIIII6"
           resize_info[part.name]
         end
       end
@@ -200,6 +201,7 @@ describe Y2Storage::Proposal::AutoinstDevicesCreator do
 
       before do
         allow_any_instance_of(Y2Storage::LvmLv).to receive(:detect_resize_info) do |lv|
+          puts "AQUIIIIIII14"
           resize_info[lv.name]
         end
       end

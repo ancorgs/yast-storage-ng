@@ -1,0 +1,141 @@
+.............................................................AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+.AQUIIIIIIII1
+...........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................AQUIIIIIIII2
+.AQUIIIIIIII2
+.AQUIIIIIIII2
+..................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................AQUIIIIIIII3
+.AQUIIIIIIII3
+.AQUIIIIIIII3
+.AQUIIIIIIII3
+.AQUIIIIIIII3
+.AQUIIIIIIII3
+.AQUIIIIIIII3
+.AQUIIIIIIII3
+..AQUIIIIIIII3
+............................................................................................................................................................................................................................................................................................................................AQUIIIIIIII4
+.AQUIIIIIIII4
+...............................................AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+....AQUIIIIIIII
+.................................................................................................................................................AQUIIIIIIII5
+.AQUIIIIIIII5
+.AQUIIIIIIII5
+...*...AQUIIIIIII13
+.AQUIIIIIII13
+.AQUIIIIIII13
+.......................................*.................................................................................................*.................................................AQUIIIIIIII6
+AQUIIIIIIII6
+.AQUIIIIIII14
+AQUIIIIIII14
+...................................................................................................................................*................AQUIIIIIIII7
+.....AQUIIIIIIII8
+.AQUIIIIIIII8
+.....AQUIIIIIIII9
+.AQUIIIIIIII9
+.AQUIIIIIIII9
+.AQUIIIIIIII9
+.AQUIIIIIIII9
+.AQUIIIIIIII9
+.AQUIIIIIIII9
+.AQUIIIIIIII9
+.AQUIIIIIIII9
+AQUIIIIIIII9
+.AQUIIIIIIII9
+AQUIIIIIIII9
+.AQUIIIIIIII9
+AQUIIIIIIII9
+.AQUIIIIIIII9
+AQUIIIIIIII9
+.AQUIIIIIIII9
+AQUIIIIIIII9
+.........AQUIIIIIII10
+AQUIIIIIII10
+.AQUIIIIIII10
+AQUIIIIIII10
+........AQUIIIIIII11
+.AQUIIIIIII11
+.AQUIIIIIII11
+......AQUIIIIIII12
+....................................................*.............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................*................................................................................................................................................AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+...AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.....................AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+AQUIIIIIIII
+AQUIIIIIIII
+AQUIIIIIIII
+.AQUIIIIIIII
+AQUIIIIIIII
+.....................................................................................................................................................................................................................................................................................................................
+
+Pending: (Failures listed here are expected and do not affect your suite's status)
+
+  1) Y2Storage::AutoinstProposal#propose removing partitions when only free space should be used raises an error if there is not enough space
+     # Not yet implemented
+     # ./test/y2storage/autoinst_proposal_test.rb:298
+
+  2) Y2Storage::Proposal::AutoinstSpaceMaker#cleaned_devicegraph when 'use' key is set to 'all' and a RAID device will be reused keeps the physical partition
+     # Not yet implemented
+     # ./test/y2storage/proposal/autoinst_space_maker_test.rb:98
+
+  3) Y2Storage::Proposal::AutoinstDrivesMap#each when no suitable drive is found error?
+     # Not yet implemented
+     # ./test/y2storage/proposal/autoinst_drives_map_test.rb:169
+
+  4) Y2Storage::Proposal::SpaceMaker#delete_unwanted_partitions when deleting Linux partitions deletes partitions with id raid
+     # Let's wait until we have some meaningful RAID scenarios
+     # ./test/y2storage/proposal/space_maker_test.rb:113
+
+  5) Y2Storage::Region#inside? if both regions have a different block size raises Storage::DifferentBlockSizes
+     # Temporarily skipped with xit
+     # ./test/y2storage/region_test.rb:79
+
+  6) Y2Storage::AutoinstProfile::RaidOptionsSection.new_from_storage initializes device_order
+     # .new_from_storage is not fully implemented yet
+     # ./test/y2storage/autoinst_profile/raid_options_section_test.rb:128
+
+Finished in 2 minutes 45.7 seconds (files took 2.23 seconds to load)
+3588 examples, 0 failures, 6 pending
+

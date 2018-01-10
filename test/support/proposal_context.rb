@@ -31,8 +31,10 @@ RSpec.shared_context "proposal" do
       !!(partition.filesystem.label =~ /indows/)
     end
 
-    allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info)
-      .and_return(resize_info)
+    allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info) do
+      puts "AQUIIIIIIII"
+      resize_info
+    end
 
     allow(Yast::Arch).to receive(:x86_64).and_return(architecture == :x86)
     allow(Yast::Arch).to receive(:i386).and_return(architecture == :i386)

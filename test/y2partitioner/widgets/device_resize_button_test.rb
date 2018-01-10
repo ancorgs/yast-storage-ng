@@ -101,8 +101,10 @@ describe Y2Partitioner::Widgets::DeviceResizeButton do
           allow_any_instance_of(Y2Partitioner::Actions::ResizePartition).to receive(:run)
             .and_return(action_result)
 
-          allow_any_instance_of(Y2Storage::Partition).to receive(:detect_resize_info)
-            .and_return(nil)
+          allow_any_instance_of(Y2Storage::Partition).to receive(:detect_resize_info) do
+            puts "AQUIIIIIIII2"
+            nil
+          end
         end
 
         let(:action_result) { nil }

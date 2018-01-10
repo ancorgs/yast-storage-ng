@@ -45,7 +45,10 @@ describe Y2Storage::Planned::CanBeResized do
   before do
     allow(planned).to receive(:device_to_reuse).with(devicegraph)
       .and_return(real_device)
-    allow(real_device).to receive(:detect_resize_info).and_return(resize_info)
+    allow(real_device).to receive(:detect_resize_info) do
+      puts "AQUIIIIIIII3"
+      resize_info
+    end
   end
 
   describe "#reuse_device!" do

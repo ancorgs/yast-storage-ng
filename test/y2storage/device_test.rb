@@ -91,7 +91,12 @@ describe Y2Storage::Device do
     subject(:device) { Y2Storage::Partition.find_by_name(fake_devicegraph, "/dev/sda1") }
     let(:resize_info) { double(Y2Storage::ResizeInfo, resize_ok?: resize_ok) }
 
-    before { allow(device).to receive(:detect_resize_info).and_return resize_info }
+    before do
+      allow(device).to receive(:detect_resize_info) do
+        puts "AQUIIIIIIII4"
+        resize_info
+      end
+    end
 
     context "if libstorage-nd reports that resizing is possible" do
       let(:resize_ok) { true }

@@ -33,7 +33,10 @@ describe Y2Partitioner::Actions::ResizePartition do
     allow(Yast::Wizard).to receive(:CloseDialog)
 
     devicegraph_stub(scenario)
-    allow(partition).to receive(:detect_resize_info).and_return(resize_info)
+    allow(partition).to receive(:detect_resize_info) do
+      puts "AQUIIIIIIII1"
+      resize_info
+    end
   end
 
   subject(:action) { described_class.new(partition) }

@@ -290,7 +290,10 @@ describe Y2Storage::Proposal::SpaceMaker do
 
             before do
               allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem)
-                .to receive(:detect_resize_info).and_return(resize_info)
+                .to receive(:detect_resize_info) do
+                  puts "AQUIIIIIIII7"
+                  resize_info
+                end
             end
 
             it "resizes Windows partitions to free additional needed space" do
@@ -349,8 +352,11 @@ describe Y2Storage::Proposal::SpaceMaker do
           end
 
           before do
-            allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info)
-              .and_return(resize_info)
+            allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem)
+              .to receive(:detect_resize_info) do
+                  puts "AQUIIIIIIII8"
+                  resize_info
+                end
           end
 
           it "does not delete the Linux partitions" do
@@ -408,8 +414,10 @@ describe Y2Storage::Proposal::SpaceMaker do
       let(:windows_partitions) { [partition_double("/dev/sda1")] }
 
       before do
-        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info)
-          .and_return(resize_info)
+        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info) do
+          puts "AQUIIIIIIII9"
+          resize_info
+        end
       end
 
       context "if resizing Windows is allowed" do
@@ -611,8 +619,10 @@ describe Y2Storage::Proposal::SpaceMaker do
 
       before do
         settings.candidate_devices = ["/dev/sda", "/dev/sdb"]
-        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info)
-          .and_return(resize_info)
+        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info) do
+          puts "AQUIIIIIII10"
+          resize_info
+        end
       end
 
       it "shrinks first the less full Windows partition" do
@@ -750,8 +760,10 @@ describe Y2Storage::Proposal::SpaceMaker do
 
       before do
         settings.candidate_devices = ["/dev/sda", "/dev/sdb"]
-        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info)
-          .and_return(resize_info)
+        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info) do
+          puts "AQUIIIIIII11"
+          resize_info
+        end
       end
 
       context "if the choosen disk has no enough space" do
@@ -833,8 +845,10 @@ describe Y2Storage::Proposal::SpaceMaker do
         # We are reusing vg1
         expect(lvm_helper).to receive(:partitions_in_vg).and_return ["/dev/sda5", "/dev/sda9"]
         # At some point, we can try to resize Windows
-        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info)
-          .and_return(resize_info)
+        allow_any_instance_of(Y2Storage::Filesystems::BlkFilesystem).to receive(:detect_resize_info) do
+          puts "AQUIIIIIII12"
+          resize_info
+        end
       end
 
       it "does not delete partitions belonging to the reused VG" do
