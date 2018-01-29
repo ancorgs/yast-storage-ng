@@ -145,7 +145,6 @@ module Y2Partitioner
           device_mapper_items,
           nfs_items,
           btrfs_items,
-          tmpfs_items,
           unused_items
         ]
         CWM::PagerTreeItem.new(page, children: children, icon: Icons::ALL)
@@ -217,10 +216,6 @@ module Y2Partitioner
       def btrfs_items
         page = Pages::Btrfs.new(self)
         CWM::PagerTreeItem.new(page, icon: Icons::BTRFS)
-      end
-
-      def tmpfs_items
-        item_for("tmpfs", _("tmpfs"), icon: Icons::NFS)
       end
 
       def unused_items
