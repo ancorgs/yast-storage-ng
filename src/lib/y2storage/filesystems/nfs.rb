@@ -89,6 +89,16 @@ module Y2Storage
         LegacyNfs.new_from_nfs(self).to_hash
       end
 
+      def share
+        "#{server}:#{path}"
+      end
+
+      alias_method :name, :share
+
+      def size
+        DiskSize.zero
+      end
+
     protected
 
       def types_for_is

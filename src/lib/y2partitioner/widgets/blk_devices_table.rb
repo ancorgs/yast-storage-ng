@@ -77,6 +77,7 @@ module Y2Partitioner
       end
 
       def filesystem(device)
+        return device if device.is?(:filesystem)
         return nil unless device.respond_to?(:filesystem)
         device.filesystem
       end
@@ -176,7 +177,8 @@ module Y2Partitioner
 
       def filesystem_label_value(device)
         fs = filesystem(device)
-        fs.nil? ? "" : fs.label
+        return "" if fs.nil? || !fs.respond_to?(:label)
+        fs.label
       end
 
       def mount_point_value(device)
@@ -200,6 +202,7 @@ module Y2Partitioner
         disk:      Icons::HD,
         dasd:      Icons::HD,
         multipath: Icons::MULTIPATH,
+        nfs:       Icons::NFS,
         partition: Icons::HD_PART,
         raid:      Icons::RAID,
         lvm_vg:    Icons::LVM,
@@ -225,6 +228,7 @@ module Y2Partitioner
         disk:          N_("Disk"),
         dasd:          N_("Disk"),
         multipath:     N_("Multipath"),
+        nfs:           N_("NFS"),
         bios_raid:     N_("BIOS RAID"),
         software_raid: N_("MD RAID"),
         lvm_pv:        N_("PV"),
