@@ -30,6 +30,8 @@ require "y2partitioner/widgets/pages"
 require "y2partitioner/setup_errors_presenter"
 require "y2storage/setup_checker"
 
+Yast.import "UI"
+
 module Y2Partitioner
   module Widgets
     # A dummy page for prototyping
@@ -89,10 +91,7 @@ module Y2Partitioner
       def items
         [
           system_items,
-          # TODO: only if there is graph support UI.HasSpecialWidget(:Graph)
-          item_for("devicegraph", _("Device Graph"), icon: Icons::GRAPH),
-          # TODO: only if there is graph support UI.HasSpecialWidget(:Graph)
-          item_for("mountgraph", _("Mount Graph"), icon: Icons::GRAPH),
+          *graph_items,
           item_for("summary", _("Installation Summary"), icon: Icons::SUMMARY),
           item_for("settings", _("Settings"), icon: Icons::SETTINGS)
         ]
@@ -237,6 +236,16 @@ module Y2Partitioner
 
       def unused_items
         item_for("unused", _("Unused Devices"), icon: Icons::UNUSED)
+      end
+
+      def graph_items
+        return [] unless Yast::UI.HasSpecialWidget(:Graph)
+
+        page = Pages::DeviceGraph.new(self)
+        dev_item = CWM::PagerTreeItem.new(page, icon: Icons::GRAPH)
+        mount_item = item_for("mountgraph", _("Mount Graph"), icon: Icons::GRAPH)
+
+        [dev_item, mount_item]
       end
 
       def item_for(id, label, widget: nil, icon: nil, subtree: [])
