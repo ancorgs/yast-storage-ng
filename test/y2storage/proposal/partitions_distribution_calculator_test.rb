@@ -25,6 +25,8 @@ require "storage"
 require "y2storage"
 
 describe Y2Storage::Proposal::PartitionsDistributionCalculator do
+  using Y2Storage::Refinements::SizeCasts
+
   let(:lvm_volumes) { [] }
   let(:settings) { Y2Storage::ProposalSettings.new }
   let(:enc_password) { nil }
@@ -34,17 +36,12 @@ describe Y2Storage::Proposal::PartitionsDistributionCalculator do
   before do
     settings.encryption_password = enc_password
     settings.lvm_vg_strategy = lvm_vg_strategy
+    fake_scenario(scenario)
   end
 
   subject(:calculator) { described_class.new(lvm_helper) }
 
   describe "#best_distribution" do
-    using Y2Storage::Refinements::SizeCasts
-
-    before do
-      fake_scenario(scenario)
-    end
-
     let(:vol1) { planned_vol(mount_point: "/1", type: :ext4, min: 1.GiB, max: 3.GiB, weight: 1) }
     let(:vol2) { planned_vol(mount_point: "/2", type: :ext4, min: 2.GiB, max: 3.GiB, weight: 1) }
     let(:volumes) { [vol1, vol2, vol3] }
@@ -646,6 +643,63 @@ describe Y2Storage::Proposal::PartitionsDistributionCalculator do
 
       it "raises an exception" do
         expect { distribution }.to raise_error ArgumentError
+      end
+    end
+  end
+
+  describe "#resizing_size" do
+    let(:volumes) { [vol1, vol2] }
+    let(:vol1) { planned_vol(mount_point: "/1", type: :ext4, min: vol1_size) }
+    let(:vol2) { planned_vol(mount_point: "/2", type: :ext4, min: vol2_size) }
+
+    let(:spaces) { fake_devicegraph.free_spaces }
+    let(:partition) { fake_devicegraph.find_by_name("/dev/sda5") }
+
+    context "if the existing spaces can be used (not affected by primary partitions limit)" do
+      let(:scenario) { "windows_resizing1" }
+
+      context "but none of the planned partitions fit in the existing spaces" do
+        let(:vol1_size) { 11.GiB }
+        let(:vol2_size) { 12.GiB }
+
+        it "returns the sum size of all the planned partitions" do
+          result = calculator.resizing_size(partition, volumes, spaces)
+          expect(result).to eq(vol1_size + vol2_size)
+        end
+      end
+
+      context "and some planned partitions fit in the existing spaces" do
+        let(:vol1_size) { 9.GiB }
+        let(:vol2_size) { 14.GiB }
+
+        it "returns the sum size of the remaining planned partitions" do
+          result = calculator.resizing_size(partition, volumes, spaces)
+          expect(result).to eq vol2_size
+        end
+      end
+    end
+
+    context "if the existing spaces cannot be used (primary partitions limit)" do
+      let(:scenario) { "windows_resizing2" }
+
+      context "and none of the planned partitions would have fitted in the existing spaces" do
+        let(:vol1_size) { 11.GiB }
+        let(:vol2_size) { 12.GiB }
+
+        it "returns the sum size of all the planned partitions" do
+          result = calculator.resizing_size(partition, volumes, spaces)
+          expect(result).to eq(vol1_size + vol2_size)
+        end
+      end
+
+      context "and some planned partitions would have fitted in the existing spaces" do
+        let(:vol1_size) { 9.GiB }
+        let(:vol2_size) { 14.GiB }
+
+        it "returns the sum size of all the planned partitions" do
+          result = calculator.resizing_size(partition, volumes, spaces)
+          expect(result).to eq(vol1_size + vol2_size)
+        end
       end
     end
   end
