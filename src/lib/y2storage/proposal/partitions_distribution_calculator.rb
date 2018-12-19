@@ -54,17 +54,11 @@ module Y2Storage
         # First, make sure the whole attempt makes sense
         return nil if impossible?(partitions, spaces)
 
-        log.info "Selecting the candidate spaces for each planned partition"
         begin
-          disk_spaces_by_part = candidate_disk_spaces(partitions, spaces)
+          dist_hashes = distribute_partitions(partitions, spaces)
         rescue NoDiskSpaceError
           return nil
         end
-
-        log.info "Calculate all the possible distributions of planned partitions into spaces"
-        dist_hashes = distribution_hashes(disk_spaces_by_part)
-        add_unused_spaces(dist_hashes, spaces)
-
         candidates = distributions_from_hashes(dist_hashes)
 
         if lvm?
@@ -75,6 +69,16 @@ module Y2Storage
         candidates.compact!
 
         best_candidate(candidates)
+      end
+
+      def distribute_partitions(partitions, spaces)
+        log.info "Selecting the candidate spaces for each planned partition"
+        disk_spaces_by_part = candidate_disk_spaces(partitions, spaces)
+
+        log.info "Calculate all the possible distributions of planned partitions into spaces"
+        dist_hashes = distribution_hashes(disk_spaces_by_part)
+        add_unused_spaces(dist_hashes, spaces)
+        dist_hashes
       end
 
       # Space that should be freed when resizing an existing partition in
@@ -125,6 +129,190 @@ module Y2Storage
         needed - available
       end
 
+      # NOTE: ahora mismo estoy considerando que el redimensionado da lugar a un
+      # nuevo espacio. Habría que añadir un test para casos en que no es así.
+      def resizing2(partition, planned_partitions, free_spaces)
+        # We are going to resize this partition only once, so let's assume the
+        # worst case:
+        #  - resizing produces a new space
+        #  - several planned partitions (and maybe one of the new PVs) will
+        #    be logical
+        #  - the LVM must be spread among all the available spaces
+        ptable = partition.partition_table
+        grain = ptable.align_grain
+        overhead_of_logical = Planned::AssignedSpace.overhead_of_logical(ptable.partitionable)
+
+        planned_in_space = parts_in_new_space(planned_partitions, free_spaces, grain)
+        needed = DiskSize.sum(planned_in_space.map(&:min), rounding: grain)
+
+        if ptable.extended_possible?
+          # If the space is not actually new (it gets added to an existing one),
+          # this number can be bigger
+          max_logical_count = planned_in_space.size
+          max_logical_count += 1 unless lvm_helper.missing_space.zero?
+          needed += overhead_of_logical * max_logical_count
+        end
+
+        if lvm?
+          pvs_to_create = free_spaces.size + 1
+          needed += lvm_space_to_make(pvs_to_create)
+        end
+
+        # Resizing can introduce a misaligned free space blob.
+        # A good example of such a block is the free space at the end of a
+        # GPT which is practically guaranteed to be misaligned due to the
+        # GPT meta data stored at the disk's end.
+        needed += grain
+        needed
+      end
+
+      def resizing3(partition, planned_partitions, free_spaces)
+        # Estas dos hacen falta?
+        ptable = partition.partition_table
+        grain = ptable.align_grain
+
+        all_spaces = add_or_mark(free_spaces, partition)
+        all_planned =
+          if lvm?
+            # In the LVM case, assume there will be only one big PV, so we have to
+            # make room for it as well.
+            planned_partitions + [new_pv]
+          else
+            planned_partitions
+          end
+
+        begin
+          dist_hashes = distribute_partitions(all_planned, all_spaces)
+        rescue NoDiskSpaceError
+          return partition.size
+        end
+
+        # Group all the distributions based on the partitions assigned
+        # to the new space
+        alternatives_for_new_space = group_dist_hashes_by_new_space2(dist_hashes)
+
+        sorted_keys = alternatives_for_new_space.keys.sort do |parts_in_a, parts_in_b|
+          compare_planned_parts_sets_size(parts_in_a, parts_in_b, grain)
+        end
+
+        sorted_keys.each do |parts|
+          distros = distributions_from_hashes(alternatives_for_new_space[parts])
+          next if distros.empty?
+
+          assigned = distros.map {|i| i.spaces.find {|a| a.disk_space.growing? } }
+
+
+          pepe = assigned.map(&:nueva_mierda).min
+          the_growing = all_spaces.find(&:growing?)
+          result = pepe + the_growing.region.end_overhead(grain) # por la alineación
+          if the_growing.region != partition.region
+            result -= the_growing.disk_size
+          end
+          return result
+        end
+
+        partition.size
+      end
+
+      def add_or_mark(free_spaces, partition)
+        result = free_spaces.map do |space|
+          if space.disk == partition.disk && space.region.start == partition.region.end + 1
+            new_space = space.dup
+            new_space.growing = true
+            new_space
+          else
+            space
+          end
+        end
+        if result.none?(&:growing?)
+          # Use partition.region.... because we have to use something
+          # Maybe we could create a super-small region at the end of the
+          # partition...
+          new_space = FreeDiskSpace.new(partition.disk, partition.region)
+          new_space.growing = true
+          result << new_space
+        end
+        result
+      end
+
+      def new_pv
+        res = Planned::Partition.new(nil)
+        res.min_size = lvm_space_to_make(1)
+        res
+      end
+
+      def parts_in_new_space(planned_partitions, spaces, align_grain)
+        ### Worst case, all the partitions that can end up in this disk will do so
+        ### and will be candidates to be logical
+        ###max_partitions = planned_partitions.select { |v| v.disk.nil? || v.disk == disk.name }
+
+        return planned_partitions if spaces.empty?
+
+        spaces_by_part = candidate_disk_spaces(planned_partitions, spaces, raise_if_empty: false)
+        spaces_by_part.values.each { |spaces| spaces << :future_new_space }
+        dist_hashes = distribution_hashes(spaces_by_part)
+
+        # Group all the distributions for which the content of :future_new_space
+        # is the same
+        alternatives_for_new_space = group_dist_hashes_by_new_space(dist_hashes, :future_new_space)
+
+        sorted_keys = alternatives_for_new_space.keys.sort do |parts_in_a, parts_in_b|
+          compare_planned_parts_sets_size(parts_in_a, parts_in_b, align_grain)
+        end
+
+        sorted_keys.each do |parts|
+          # Actually, introducing "parts" into the mix could invalidate a
+          # distribution considered valid right now
+          return parts if any_valid_distribution?(alternatives_for_new_space[parts])
+        end
+
+        planned_partitions
+      end
+
+      def compare_planned_parts_sets_size(parts_a, parts_b, align_grain)
+        size_in_a = DiskSize.sum(parts_a.map(&:min), rounding: align_grain)
+        size_in_b = DiskSize.sum(parts_b.map(&:min), rounding: align_grain)
+        result_by_size = size_in_a <=> size_in_b
+        return result_by_size unless result_by_size.zero?
+
+        # Fallback to guarantee stable sorting
+        ids_in_a = parts_a.map(&:planned_id).join
+        ids_in_b = parts_b.map(&:planned_id).join
+        ids_in_a <=> ids_in_b
+      end
+
+      def group_dist_hashes_by_new_space(dist_hashes, marker)
+        result = {}
+        dist_hashes.each do |dist|
+          key = dist[marker]
+          result[key] ||= []
+          result[key] << dist
+          dist.delete(marker)
+        end
+        result
+      end
+
+      def group_dist_hashes_by_new_space2(dist_hashes)
+        result = {}
+        dist_hashes.each do |dist|
+          key = dist.find {|k, v| k.growing? }.last
+          result[key] ||= []
+          result[key] << dist
+        end
+        result
+      end
+
+      def any_valid_distribution?(dist_hashes)
+        dist_hashes.any? do |dist_hash|
+          begin
+            Planned::PartitionsDistribution.new(dist_hash)
+            true
+          rescue Error
+            false
+          end
+        end
+      end
+
     protected
 
       # @return [Proposal::LvmHelper, nil] nil if LVM is not involved
@@ -165,32 +353,12 @@ module Y2Storage
         lvm_helper.missing_space + lvm_helper.useless_pv_space * new_pvs
       end
 
-      # Max number of logical partitions that can contain a
-      # PartitionsDistribution for a given disk and set of partitions
-      #
-      # @param disk [Partitionable]
-      # @param planned_partitions [Array<Planned::Partition>]
-      # @return [Integer]
-      def max_logical(disk, planned_partitions)
-        ptable = disk.as_not_empty { disk.partition_table }
-        return 0 unless ptable.extended_possible?
-        # Worst case, all the partitions that can end up in this disk will do so
-        # and will be candidates to be logical
-        max_partitions = planned_partitions.select { |v| v.disk.nil? || v.disk == disk.name }
-        partitions_count = max_partitions.size
-        # Even worst if we need a logical PV
-        partitions_count += 1 unless lvm_helper.missing_space.zero?
-        if ptable.has_extended?
-          partitions_count
-        else
-          Planned::PartitionsDistribution.partitions_in_new_extended(partitions_count, ptable)
-        end
-      end
-
       # Returns the sum of available spaces
       #
       # @param free_spaces [Array<FreeDiskSpace>] List of free disk spaces
       # @return [DiskSize] Available disk space
+      #
+      # NOTE: growing?
       def available_space(free_spaces)
         DiskSize.sum(free_spaces.map(&:disk_size))
       end
@@ -202,11 +370,13 @@ module Y2Storage
       #
       # @param planned_partitions [Array<Planned::Partition>]
       # @param free_spaces [Array<FreeDiskSpace>]
+      # @param raise_if_empty [Boolean] raise a {NoDiskSpaceError} if there is
+      #   any planned partition that doesn't fit in any of the spaces
       # @return [Hash{Planned::Partition => Array<FreeDiskSpace>}]
-      def candidate_disk_spaces(planned_partitions, free_spaces)
+      def candidate_disk_spaces(planned_partitions, free_spaces, raise_if_empty: true)
         planned_partitions.each_with_object({}) do |partition, hash|
           spaces = free_spaces.select { |space| suitable_disk_space?(space, partition) }
-          if spaces.empty?
+          if spaces.empty? && raise_if_empty
             log.error "No suitable free space for #{partition}"
             raise NoDiskSpaceError, "No suitable free space for the planned partition"
           end
@@ -235,10 +405,14 @@ module Y2Storage
 
       def suitable_disk_space?(space, partition)
         return false if partition.disk && partition.disk != space.disk_name
-        return false if space.disk_size < partition.min_size
+        return false unless pepe(space, partition)
         max_offset = partition.max_start_offset
         return false if max_offset && space.start_offset > max_offset
         true
+      end
+
+      def pepe(space, partition)
+        space.growing? ? true : space.disk_size >= partition.min_size
       end
 
       # Cartesian product (that is, all the possible combinations) of hash

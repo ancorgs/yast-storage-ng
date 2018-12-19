@@ -356,7 +356,7 @@ module Y2Storage
       # @return [DiskSize]
       def resizing_size(partition, planned_partitions, disk_name)
         spaces = free_spaces(new_graph, disk_name)
-        dist_calculator.resizing_size(partition, planned_partitions, spaces)
+        dist_calculator.resizing3(partition, planned_partitions, spaces)
       end
 
       # List of free spaces in the given devicegraph

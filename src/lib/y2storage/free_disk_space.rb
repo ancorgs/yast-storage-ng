@@ -38,6 +38,8 @@ module Y2Storage
     #   @return [Region]
     attr_reader :region
 
+    attr_writer :growing
+
     # Constructor
     #
     # @param disk [Disk]
@@ -48,12 +50,18 @@ module Y2Storage
       # deleted (don't trust the garbage collector when SWIG is involved)
       region = Storage::Region.new(region.to_storage_value)
       @region = Y2Storage::Region.new(region)
+      @growing = false
+    end
+
+    def growing?
+      @growing
     end
 
     # Whether the region belongs to a partition that is going to be reused
     #
     # @return [Boolean]
     def reused_partition?
+      return false if growing?
       disk.partitions.map(&:region).include?(region)
     end
 

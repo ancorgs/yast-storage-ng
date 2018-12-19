@@ -80,6 +80,7 @@ module Y2Storage
       def valid?
         return false if wrong_usage_of_reused_partition?
         return false unless primary_partitions_fit?
+        return true if disk_space.growing?
         return true if usable_size >= DiskSize.sum(partitions.map(&:min), rounding: align_grain)
         # At first sight, there is no enough space, but maybe enforcing some
         # order...
@@ -132,6 +133,12 @@ module Y2Storage
         # libstorage has already substracted the the overhead of the first EBR.
         logical -= 1 if partition_type == :logical
         disk_size - overhead_of_logical * logical
+      end
+
+      def nueva_mierda
+        result = DiskSize.sum(partitions.map(&:min), rounding: align_grain)
+        logical = num_logical
+        result + overhead_of_logical * logical
       end
 
       # Space consumed by the EBR of one logical partition in a given disk

@@ -663,8 +663,10 @@ describe Y2Storage::Proposal::PartitionsDistributionCalculator do
         let(:vol2_size) { 12.GiB }
 
         it "returns the sum size of all the planned partitions" do
-          result = calculator.resizing_size(partition, volumes, spaces)
-          expect(result).to eq(vol1_size + vol2_size)
+          # 2 extra MiB for the logical overhead (one MiB for each new logical
+          # partition)
+          result = calculator.resizing3(partition, volumes, spaces)
+          expect(result).to eq(vol1_size + vol2_size + 2.MiB)
         end
       end
 
@@ -673,8 +675,9 @@ describe Y2Storage::Proposal::PartitionsDistributionCalculator do
         let(:vol2_size) { 14.GiB }
 
         it "returns the sum size of the remaining planned partitions" do
-          result = calculator.resizing_size(partition, volumes, spaces)
-          expect(result).to eq vol2_size
+          result = calculator.resizing2(partition, volumes, spaces)
+          # One extra MiB for the logical overhead
+          expect(result).to eq(vol2_size + 1.MiB)
         end
       end
     end
@@ -687,8 +690,10 @@ describe Y2Storage::Proposal::PartitionsDistributionCalculator do
         let(:vol2_size) { 12.GiB }
 
         it "returns the sum size of all the planned partitions" do
-          result = calculator.resizing_size(partition, volumes, spaces)
-          expect(result).to eq(vol1_size + vol2_size)
+          # 2 extra MiB for the logical overhead (one MiB for each new logical
+          # partition)
+          result = calculator.resizing3(partition, volumes, spaces)
+          expect(result).to eq(vol1_size + vol2_size + 2.MiB)
         end
       end
 
@@ -697,8 +702,10 @@ describe Y2Storage::Proposal::PartitionsDistributionCalculator do
         let(:vol2_size) { 14.GiB }
 
         it "returns the sum size of all the planned partitions" do
-          result = calculator.resizing_size(partition, volumes, spaces)
-          expect(result).to eq(vol1_size + vol2_size)
+          # 2 extra MiB for the logical overhead (one MiB for each new logical
+          # partition)
+          result = calculator.resizing3(partition, volumes, spaces)
+          expect(result).to eq(vol1_size + vol2_size + 2.MiB)
         end
       end
     end
