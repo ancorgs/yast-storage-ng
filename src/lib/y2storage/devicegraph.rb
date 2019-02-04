@@ -351,6 +351,7 @@ module Y2Storage
       end
 
       probed = StorageManager.instance.raw_probed
+      puts "\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBCCCCCCCCCCCCCCCCCCC"
       found = BlkDevice.find_by_any_name(probed, name)
       if found.nil?
         log.info "Device #{name} not found via system lookup"

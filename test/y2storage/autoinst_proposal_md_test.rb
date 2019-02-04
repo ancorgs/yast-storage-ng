@@ -43,7 +43,7 @@ describe Y2Storage::AutoinstProposal do
     let(:partitioning) do
       [
         {
-          "device" => "/dev/md",
+          "device" => drive_device,
           "type" => :CT_MD, "use" => "all", "disklabel" => "msdos",
           "partitions" =>
             [
@@ -231,7 +231,15 @@ describe Y2Storage::AutoinstProposal do
     end
 
     context "with current libstorage-ng behavior (Md#name like /dev/md/0)" do
-      include_examples "all MD create/reuse combinations"
+      context "and a classic profile (using /dev/md in <device>)" do
+        let(:drive_device) { "/dev/md" }
+        include_examples "all MD create/reuse combinations"
+      end
+
+      context "and a profile using the whole MD name in <device>" do
+        let(:drive_device) { md_name_in_profile }
+        include_examples "all MD create/reuse combinations"
+      end
     end
 
     context "with libstorage-ng reporting Md#name with format like /dev/md0" do
@@ -239,7 +247,15 @@ describe Y2Storage::AutoinstProposal do
         fake_devicegraph.find_by_name("/dev/md/0").name = "/dev/md0"
       end
 
-      include_examples "all MD create/reuse combinations"
+      context "and a classic profile (using /dev/md in <device>)" do
+        let(:drive_device) { "/dev/md" }
+        include_examples "all MD create/reuse combinations"
+      end
+
+      context "and a profile using the whole MD name in <device>" do
+        let(:drive_device) { md_name_in_profile }
+        include_examples "all MD create/reuse combinations"
+      end
     end
   end
 end

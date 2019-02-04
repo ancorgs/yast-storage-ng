@@ -46,7 +46,10 @@ describe Y2Storage::Proposal::AutoinstDrivesMap do
   describe ".new" do
     context "when a device does not exist" do
       before do
-        allow(fake_devicegraph).to receive(:find_by_any_name).and_return(nil)
+        allow(fake_devicegraph).to receive(:find_by_any_name) do
+          puts "WWWWWWWWWWWWWWWOOOOOOOOOOOOOOOO"
+          nil
+        end
       end
 
       let(:partitioning_array) do

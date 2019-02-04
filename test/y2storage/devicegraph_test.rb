@@ -453,7 +453,10 @@ describe Y2Storage::Devicegraph do
           # Without that, the test would succeed for every devicegraph such that
           # devicegraph == raw_probed. But being equal is not enough, libstorage-ng raises
           # an exception if a lookup is attempted in any other devicegraph.
-          expect(Y2Storage::BlkDevice).to receive(:find_by_any_name).with(be(raw_probed), name)
+          expect(Y2Storage::BlkDevice).to receive(:find_by_any_name).with(be(raw_probed), name) do
+              puts "WWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEE"
+              nil
+            end
           devicegraph.find_by_any_name(name)
         end
 
@@ -461,7 +464,10 @@ describe Y2Storage::Devicegraph do
           let(:probed_device) { fake_devicegraph.find_by_name("/dev/sdf1") }
 
           before do
-            allow(Y2Storage::BlkDevice).to receive(:find_by_any_name).and_return probed_device
+            allow(Y2Storage::BlkDevice).to receive(:find_by_any_name) do
+              puts "WWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEE"
+              probed_device
+            end
           end
 
           context "and that device still exists in the target devicegraph" do
@@ -487,7 +493,10 @@ describe Y2Storage::Devicegraph do
 
         context "if the lookup finds nothing" do
           before do
-            allow(Y2Storage::BlkDevice).to receive(:find_by_any_name).and_return nil
+            allow(Y2Storage::BlkDevice).to receive(:find_by_any_name) do
+              puts "WWWWWWWWWWWWWWWWWEEEEEEEEEEEEEEEE"
+              nil
+            end
           end
 
           it "returns nil" do
