@@ -85,23 +85,6 @@ module Y2Storage
       #
       # @return [Symbol] Last step result
       def run
-        aliases = {
-          "select_disks"      => -> { run_dialog(SelectDisks) },
-          "select_root_disk"  => -> { run_dialog(SelectRootDisk) },
-          "select_scheme"     => -> { run_dialog(SelectScheme) },
-          "select_filesystem" => -> { run_dialog(select_filesystem_class) }
-        }
-
-        common_actions = { back: :back, cancel: :cancel, abort: :abort }
-
-        sequence = {
-          "ws_start"          => "select_disks",
-          "select_disks"      => common_actions.merge(next: "select_root_disk"),
-          "select_root_disk"  => common_actions.merge(next: "select_scheme"),
-          "select_scheme"     => common_actions.merge(next: "select_filesystem"),
-          "select_filesystem" => common_actions.merge(next: :next)
-        }
-
         Yast::Wizard.OpenNextBackDialog
         Yast::Wizard.SetAbortButton(:cancel, Yast::Label.CancelButton)
 
@@ -120,6 +103,38 @@ module Y2Storage
       end
 
       private
+
+      def aliases
+        {
+          "select_disks"      => -> { run_dialog(SelectDisks) },
+          "select_root_disk"  => -> { run_dialog(SelectRootDisk) },
+          "select_scheme"     => -> { run_dialog(SelectScheme) },
+          "select_filesystem" => -> { run_dialog(select_filesystem_class) }
+        }
+      end
+
+      def sequence
+        available_sequences[settings.allocate_volume_mode]
+      end
+
+      def available_sequences
+        common_actions = { back: :back, cancel: :cancel, abort: :abort }
+
+        {
+          auto: {
+            "ws_start"          => "select_disks",
+            "select_disks"      => common_actions.merge(next: "select_root_disk"),
+            "select_root_disk"  => common_actions.merge(next: "select_scheme"),
+            "select_scheme"     => common_actions.merge(next: "select_filesystem"),
+            "select_filesystem" => common_actions.merge(next: :next)
+          },
+          single_device: {
+            "ws_start"             => "select_scheme",
+            "select_scheme"        => common_actions.merge(next: "select_filesystem"),
+            "select_filesystem"    => common_actions.merge(next: :next)
+          }
+        }
+      end
 
       # Run the dialog or skip when necessary.
       def run_dialog(dialog_class)
