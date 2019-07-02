@@ -72,6 +72,7 @@ module Y2Storage
             VBox(
               Left(CheckBox(Id(:lvm), _("Enable Logical Volume Management (LVM)"))),
               VSpacing(1),
+              separate_vgs,
               Left(CheckBox(Id(:encryption), Opt(:notify), _("Enable Disk Encryption"))),
               VSpacing(0.2),
               Left(
@@ -90,8 +91,29 @@ module Y2Storage
           )
         end
 
+        def separate_vgs
+          separated_volume_groups = settings.volumes.select(&:separate_vg_name)
+
+          return Empty() if separated_volume_groups.empty?
+
+          VBox(
+            Left(
+              CheckBox(
+                Id(:separate_vgs),
+                format(
+                  # TRANSLATORS: %{paths} is a comma separated list of those special paths
+                  _("Use Separate LVM Volume Groups for Some Special Paths\n(%{paths})"),
+                  paths: separated_volume_groups.map(&:mount_point).join(", ")
+                )
+              )
+            ),
+            VSpacing(1)
+          )
+        end
+
         def initialize_widgets
           widget_update(:lvm, settings.use_lvm)
+          widget_update(:separate_vgs, settings.separate_vgs)
           widget_update(:encryption, settings.use_encryption)
           encryption_handler(focus: false)
           return unless settings.use_encryption
@@ -102,6 +124,7 @@ module Y2Storage
 
         def update_settings!
           settings.use_lvm = widget_value(:lvm)
+          settings.separate_vgs = widget_value(:separate_vgs)
           password = using_encryption? ? widget_value(:password) : nil
           settings.encryption_password = password
         end

@@ -86,6 +86,79 @@ describe Y2Storage::Dialogs::GuidedSetup::SelectScheme do
       end
     end
 
+    context "when there are any volume with separate_vg_name" do
+      before do
+        allow(subject).to receive(:CheckBox)
+      end
+
+      let(:separate_vgs) { false }
+      let(:separate_vg_name) { "fake_separate_vg_name" }
+
+      let(:settings) do
+        Y2Storage::ProposalSettings.new_for_current_product.tap do |settings|
+          settings.volumes.first.separate_vg_name = separate_vg_name
+          settings.separate_vgs = separate_vgs
+        end
+      end
+
+      it "includes use separate LVM option" do
+        expect(subject).to receive(:CheckBox).with(Id(:separate_vgs), any_args)
+
+        subject.run
+      end
+
+      context "and settings specifies to have separate vgs" do
+        let(:separate_vgs) { true }
+
+        it "selects to separate vgs" do
+          expect_select(:separate_vgs)
+
+          subject.run
+        end
+      end
+    end
+
+    context "when none volume has separate_vg_name" do
+      before do
+        allow(subject).to receive(:CheckBox)
+      end
+
+      let(:settings) do
+        Y2Storage::ProposalSettings.new_for_current_product.tap do |settings|
+          settings.volumes.each { |volume| volume.separate_vg_name = nil }
+        end
+      end
+
+      it "does not include use separate LVM option" do
+        expect(subject).to_not receive(:CheckBox).with(Id(:separate_vgs), any_args)
+
+        subject.run
+      end
+    end
+
+    context "and settings does not set separate volume groups" do
+      before do
+        settings.separate_vgs = false
+      end
+
+      it "does not select separate_vgs by default" do
+        expect_not_select(:separate_vgs)
+        subject.run
+      end
+    end
+
+    context "and settings sets separate volume groups" do
+      before do
+        settings.separate_vgs = true
+      end
+
+      it "selects separate_vgs by default" do
+        expect_select(:separate_vgs)
+        subject.run
+      end
+    end
+
+
     context "when settings has not encryption password" do
       before do
         settings.encryption_password = nil
