@@ -116,12 +116,28 @@ module Y2Storage
             Left(HBox(HSpacing(2), term))
           end
 
+          # Returns the device type depending on the settings
+          #
+          # @return [String] "vg", "lvm", or "partition"
+          def device_type
+            if settings.separate_vgs && volume.separate_vg?
+              "vg"
+            elsif settings.lvm
+              "lvm"
+            else
+              "partition"
+            end
+          end
+
           # Widget term for the title of the volume in case it's always
           # proposed
           #
+          # @see #device_type
+          #
           # @return [WidgetTerm]
           def header_term
-            text = settings.lvm ? header_for_lvm : header_for_partition
+            text = send("header_for_#{device_type}")
+
             Label(text)
           end
 
@@ -148,6 +164,28 @@ module Y2Storage
           end
 
           # @see #header_term
+          def header_for_vg
+            case volume.mount_point
+            when "/"
+              # TRANSLATORS: "Volume" refers to an LVM logical volume.
+              _("Settings for the Root Volume Group")
+            when "/home"
+              # TRANSLATORS: "Volume" refers to an LVM logical volume.
+              _("Settings for the Home Volume Group")
+            when "swap"
+              # TRANSLATORS: "Volume" refers to an LVM logical volume.
+              _("Settings for Swap Volume Group")
+            when nil
+              # TRANSLATORS: "Volume" refers to an LVM logical volume and
+              # "Additional" implies it will be created but not mounted
+              _("Settings for Additional Volume Group")
+            else
+              # TRANSLATORS: "Volume" refers to a LVM logical volume. %s is a mount point.
+              _("Settings for the %s Volume Group") % volume.mount_point
+            end
+          end
+
+          # @see #header_term
           def header_for_partition
             case volume.mount_point
             when "/"
@@ -168,9 +206,12 @@ module Y2Storage
           # Return a widget term for the checkbox to select if the volume
           # should be proposed.
           #
+          # @see #device_type
+          #
           # @return [WidgetTerm]
           def proposed_term
-            text = settings.lvm ? proposed_label_for_lvm : proposed_label_for_partition
+            text = send("proposed_label_for_#{device_type}")
+
             CheckBox(Id(proposed_widget_id), Opt(:notify), text, volume.proposed?)
           end
 
@@ -190,6 +231,25 @@ module Y2Storage
             else
               # TRANSLATORS: "Volume" refers to a LVM logical volume. %s is a mount point.
               _("Propose Separate %s Volume") % volume.mount_point
+            end
+          end
+
+          # @see #proposed_term
+          def proposed_label_for_vg
+            case volume.mount_point
+            when "/home"
+              # TRANSLATORS: "Volume Group" refers to a LVM Volume Group
+              _("Propose Separate Home Volume Group")
+            when "swap"
+              # TRANSLATORS: "Volume Group" refers to a LVM Volume Group
+              _("Propose Separate Swap Volume Group")
+            when nil
+              # TRANSLATORS: "Volume Group" refers to a LVM Volume Group and
+              # "Additional" implies it will be created but not mounted
+              _("Propose Additional Volume Group")
+            else
+              # TRANSLATORS: "Volume" refers to a LVM Volume Group. %s is a mount point.
+              _("Propose Separate %s Volume Group") % volume.mount_point
             end
           end
 

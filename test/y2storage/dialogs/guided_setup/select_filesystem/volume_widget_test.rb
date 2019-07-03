@@ -40,8 +40,14 @@ describe Y2Storage::Dialogs::GuidedSetup::SelectFilesystem::VolumeWidget do
 
   subject(:widget) { described_class.new(settings, index) }
 
-  let(:settings) { double("ProposalSettings", lvm: lvm, volumes: volumes) }
+  let(:settings) do
+    double("ProposalSettings", lvm: lvm, separate_vgs: separate_vgs, volumes: volumes)
+  end
+
   let(:lvm) { false }
+  let(:separate_vgs) { false }
+  let(:vol_features) { {} }
+  let(:home_vg_name) { nil }
 
   let(:volumes) do
     [
@@ -52,7 +58,6 @@ describe Y2Storage::Dialogs::GuidedSetup::SelectFilesystem::VolumeWidget do
       Y2Storage::VolumeSpecification.new(vol_features.merge("adjust_by_ram_configurable" => true))
     ]
   end
-  let(:vol_features) { {} }
 
   let(:root_vol) do
     Y2Storage::VolumeSpecification.new(
@@ -61,7 +66,12 @@ describe Y2Storage::Dialogs::GuidedSetup::SelectFilesystem::VolumeWidget do
   end
   let(:home_vol) do
     Y2Storage::VolumeSpecification.new(
-      vol_features.merge("mount_point" => "/home", "fs_type" => "ext4", "fs_types" => "ext3,ext4")
+      vol_features.merge(
+        "mount_point"      => "/home",
+        "fs_type"          => "ext4",
+        "fs_types"         => "ext3,ext4",
+        "separate_vg_name" => home_vg_name
+      )
     )
   end
 
@@ -348,6 +358,136 @@ describe Y2Storage::Dialogs::GuidedSetup::SelectFilesystem::VolumeWidget do
           it "includes the appropiate label" do
             expect(first_label.params.first).to include "Additional"
             expect(first_label.params.first).to include "Volume"
+          end
+        end
+      end
+    end
+
+    context "installing with separate volume groups" do
+      let(:lvm) { false }
+      let(:separate_vgs) { true }
+
+      context "if the volume is optional" do
+        before { vol_features["proposed_configurable"] = true }
+
+        context "and has a separate vg name" do
+          let(:index) { 1 }
+          let(:home_vg_name) { "home_vg_name" }
+
+          it "uses 'Volume Group' in the checkbox label" do
+            expect(proposed_checkbox.params[-2]).to include "Volume Group"
+          end
+        end
+
+        context "and has not a separate vg name" do
+          let(:index) { 1 }
+
+          it "uses 'Partition' in the checkbox label" do
+            expect(proposed_checkbox.params[-2]).to include "Partition"
+          end
+        end
+
+        context "if the volume is home" do
+          let(:index) { 1 }
+
+          it "includes a check box to enable it" do
+            expect(proposed_checkbox.value).to eq :CheckBox
+            expect(proposed_checkbox.params[-2]).to include "Home"
+          end
+        end
+
+        context "if the volume is swap" do
+          let(:index) { 2 }
+
+          it "includes a check box to enable it with the appropiate label" do
+            expect(proposed_checkbox.value).to eq :CheckBox
+            expect(proposed_checkbox.params[-2]).to include "Swap"
+          end
+        end
+
+        context "if the volume has a mount point different to swap or /home" do
+          let(:index) { 3 }
+
+          it "includes a check box with the appropiate label" do
+            expect(proposed_checkbox.value).to eq :CheckBox
+            expect(proposed_checkbox.params[-2]).to include "/var/lib"
+          end
+        end
+
+        context "if the volume has no mount point" do
+          let(:index) { 4 }
+
+          it "includes a check box to enable it with the appropiate label" do
+            expect(proposed_checkbox.value).to eq :CheckBox
+            expect(proposed_checkbox.params[-2]).to include "Additional"
+          end
+        end
+      end
+
+      context "if the volume is mandatory" do
+        before { vol_features["proposed_configurable"] = false }
+
+        let(:first_label) do
+          widget.content.nested_find { |w| w.is_a?(Yast::Term) && w.value == :Label }
+        end
+
+        context "if the volume is root" do
+          let(:index) { 0 }
+
+          it "does not include a check box to enable or disable it" do
+            expect(proposed_checkbox).to eq nil
+          end
+
+          it "includes the appropiate label" do
+            expect(first_label.params.first).to include "Root"
+          end
+        end
+
+        context "if the volume is /home" do
+          let(:index) { 1 }
+
+          it "does not include a check box to enable or disable it" do
+            expect(proposed_checkbox).to eq nil
+          end
+
+          it "includes the appropiate label" do
+            expect(first_label.params.first).to include "Home"
+          end
+        end
+
+        context "if the volume is swap" do
+          let(:index) { 2 }
+
+          it "does not include a check box to enable or disable it" do
+            expect(proposed_checkbox).to eq nil
+          end
+
+          it "includes the appropiate label" do
+            expect(first_label.params.first).to include "Swap"
+          end
+        end
+
+        context "if the volume has a mount point different to swap or /home" do
+          let(:index) { 3 }
+
+          it "does not include a check box to enable or disable it" do
+            expect(proposed_checkbox).to eq nil
+          end
+
+          it "includes the appropiate label" do
+            expect(first_label.params.first).to include "/var/lib"
+          end
+        end
+
+        context "if the volume has no mount point" do
+          let(:index) { 4 }
+
+          it "does not include a check box to enable or disable it" do
+            expect(proposed_checkbox).to eq nil
+          end
+
+          it "includes the appropiate label" do
+            expect(first_label.params.first).to include "Additional"
           end
         end
       end
