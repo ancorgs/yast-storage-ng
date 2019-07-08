@@ -92,9 +92,9 @@ module Y2Storage
         end
 
         def separate_vgs
-          separated_volume_groups = settings.volumes.select(&:separate_vg_name)
+          return Empty() unless settings.separate_vgs_relevant?
 
-          return Empty() if separated_volume_groups.empty?
+          separated_volume_groups = settings.volumes.select(&:separate_vg_name)
 
           VBox(
             Left(

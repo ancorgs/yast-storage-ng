@@ -86,75 +86,71 @@ describe Y2Storage::Dialogs::GuidedSetup::SelectScheme do
       end
     end
 
-    context "when there are any volume with separate_vg_name" do
+    describe "checkbox for #separate_vgs" do
       before do
+        allow(settings).to receive(:ng_format?).and_return ng_format
         allow(subject).to receive(:CheckBox)
       end
 
-      let(:separate_vgs) { false }
-      let(:separate_vg_name) { "fake_separate_vg_name" }
+      context "when legacy settings are used" do
+        let(:ng_format) { false }
 
-      let(:settings) do
-        Y2Storage::ProposalSettings.new_for_current_product.tap do |settings|
-          settings.volumes.first.separate_vg_name = separate_vg_name
-          settings.separate_vgs = separate_vgs
-        end
-      end
-
-      it "includes use separate LVM option" do
-        expect(subject).to receive(:CheckBox).with(Id(:separate_vgs), any_args)
-
-        subject.run
-      end
-
-      context "and settings specifies to have separate vgs" do
-        let(:separate_vgs) { true }
-
-        it "selects to separate vgs" do
-          expect_select(:separate_vgs)
+        it "does not include an option for separate LVM groups" do
+          expect(subject).to_not receive(:CheckBox).with(Id(:separate_vgs), any_args)
 
           subject.run
         end
       end
-    end
 
-    context "when none volume has separate_vg_name" do
-      before do
-        allow(subject).to receive(:CheckBox)
-      end
+      context "when ng settings are used" do
+        let(:ng_format) { true }
 
-      let(:settings) do
-        Y2Storage::ProposalSettings.new_for_current_product.tap do |settings|
-          settings.volumes.each { |volume| volume.separate_vg_name = nil }
+        before { allow(settings).to receive(:volumes).and_return volumes }
+
+        let(:volumes) do
+          [
+            double("VolumeSpecification", mount_point: "/", separate_vg_name: separate_vg_name),
+            double("VolumeSpecification", mount_point: "swap", separate_vg_name: separate_vg_name)
+          ]
         end
-      end
 
-      it "does not include use separate LVM option" do
-        expect(subject).to_not receive(:CheckBox).with(Id(:separate_vgs), any_args)
+        context "and no volume specifies a separate_vg_name" do
+          let(:separate_vg_name) { nil }
 
-        subject.run
-      end
-    end
+          it "does not include an option for separate LVM groups" do
+            expect(subject).to_not receive(:CheckBox).with(Id(:separate_vgs), any_args)
 
-    context "and settings does not set separate volume groups" do
-      before do
-        settings.separate_vgs = false
-      end
+            subject.run
+          end
+        end
 
-      it "does not select separate_vgs by default" do
-        expect_not_select(:separate_vgs)
-        subject.run
-      end
-    end
+        context "and some volume specifies a separate_vg_name" do
+          let(:separate_vg_name) { "fake_separate_vg_name" }
 
-    context "and settings sets separate volume groups" do
-      before do
-        settings.separate_vgs = true
-      end
+          it "includes an option to use separate LVM volumes" do
+            expect(subject).to receive(:CheckBox).with(Id(:separate_vgs), any_args)
 
-      it "selects separate_vgs by default" do
-        expect_select(:separate_vgs)
-        subject.run
+            subject.run
+          end
+
+          context "and settings does not set separate volume groups" do
+            before { settings.separate_vgs = false }
+
+            it "does not select separate_vgs by default" do
+              expect_not_select(:separate_vgs)
+              subject.run
+            end
+          end
+
+          context "and settings sets separate volume groups" do
+            before { settings.separate_vgs = true }
+
+            it "selects separate_vgs by default" do
+              expect_select(:separate_vgs)
+              subject.run
+            end
+          end
+        end
       end
     end
 
