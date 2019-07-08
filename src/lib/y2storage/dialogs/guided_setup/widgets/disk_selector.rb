@@ -122,7 +122,8 @@ module Y2Storage
                 # _("Disk for system LVM\n(#{volumes.mount_points.join(', ')})")
                 _("Disk for the system LVM")
               when :separate_lvm
-                _("Disk for #{volume_set.vg_name} Volume Group")
+                # TRANSLATORS: %s is a the volume group name (e.g. vg-spacewalk)
+                _("Disk for %s Volume Group") % volume_set.vg_name
               when :partition
                 label_for_partition
               end
