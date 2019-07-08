@@ -23,6 +23,7 @@ require "y2storage/proposal_settings"
 require "y2storage/dialogs/guided_setup/select_disks"
 require "y2storage/dialogs/guided_setup/select_volumes_disks"
 require "y2storage/dialogs/guided_setup/select_root_disk"
+require "y2storage/dialogs/guided_setup/select_partition_actions"
 require "y2storage/dialogs/guided_setup/select_scheme"
 require "y2storage/dialogs/guided_setup/select_filesystem"
 require "y2storage/partitioning_features"
@@ -107,11 +108,12 @@ module Y2Storage
 
       def aliases
         {
-          "select_disks"         => -> { run_dialog(SelectDisks) },
-          "select_volumes_disks" => -> { run_dialog(SelectVolumesDisks) },
-          "select_root_disk"     => -> { run_dialog(SelectRootDisk) },
-          "select_scheme"        => -> { run_dialog(SelectScheme) },
-          "select_filesystem"    => -> { run_dialog(select_filesystem_class) }
+          "select_disks"             => -> { run_dialog(SelectDisks) },
+          "select_volumes_disks"     => -> { run_dialog(SelectVolumesDisks) },
+          "select_root_disk"         => -> { run_dialog(SelectRootDisk) },
+          "select_scheme"            => -> { run_dialog(SelectScheme) },
+          "select_filesystem"        => -> { run_dialog(select_filesystem_class) },
+          "select_partition_actions" => -> { run_dialog(SelectPartitionActions) }
         }
       end
 
@@ -131,10 +133,11 @@ module Y2Storage
             "select_filesystem" => common_actions.merge(next: :next)
           },
           device: {
-            "ws_start"             => "select_scheme",
-            "select_scheme"        => common_actions.merge(next: "select_filesystem"),
-            "select_filesystem"    => common_actions.merge(next: "select_volumes_disks"),
-            "select_volumes_disks" => common_actions.merge(next: :next)
+            "ws_start"                 => "select_scheme",
+            "select_scheme"            => common_actions.merge(next: "select_filesystem"),
+            "select_filesystem"        => common_actions.merge(next: "select_volumes_disks"),
+            "select_volumes_disks"     => common_actions.merge(next: "select_partition_actions"),
+            "select_partition_actions" => common_actions.merge(next: :next)
           }
         }
       end
