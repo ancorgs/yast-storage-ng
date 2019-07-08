@@ -18,29 +18,25 @@
 # To contact SUSE LLC about this file by physical or electronic mail, you may
 # find current contact information at www.suse.com.
 
-require_relative "../../spec_helper.rb"
-require "y2storage/dialogs/guided_setup"
+require_relative "../../../spec_helper.rb"
+require_relative "#{TEST_PATH}/support/widgets_context"
+require "y2storage/dialogs/guided_setup/widgets/disk_selector"
 
-describe Y2Storage::Dialogs::GuidedSetup::DiskSelectorWidget do
-  # Convenience method to inspect the tree of terms for the UI
-  def term_with_id(regexp, content)
-    content.nested_find do |param|
-      next unless param.is_a?(Yast::Term)
+describe Y2Storage::Dialogs::GuidedSetup::Widgets::DiskSelector do
+  include_context "widgets"
 
-      param.params.any? { |i| i.is_a?(Yast::Term) && i.value == :id && regexp.match?(i.params.first) }
-    end
-  end
+  subject(:widget) { described_class.new(index, settings, candidate_disks: candidate_disks) }
 
-  subject(:widget) { described_class.new(settings, index, candidate_disks) }
-
-  let(:candidate_disks) { [disk1, disk2] }
   let(:disk1) { instance_double(Y2Storage::Disk, name: "/dev/disk1", size: "100GiB") }
   let(:disk2) { instance_double(Y2Storage::Disk, name: "/dev/disk2", size: "200GiB") }
-  let(:settings) { Y2Storage::ProposalSettings.new_for_current_product }
+
+  let(:candidate_disks) { [disk1, disk2] }
+
+  let(:lvm) { false }
+
+  let(:separate_vgs) { false }
 
   let(:vol_features) { {} }
-  let(:lvm) { false }
-  let(:separate_vgs) { false }
 
   let(:volumes) do
     [
@@ -71,11 +67,13 @@ describe Y2Storage::Dialogs::GuidedSetup::DiskSelectorWidget do
     )
   end
 
+  let(:settings) { Y2Storage::ProposalSettings.new_for_current_product }
+
   describe "#content" do
     let(:index) { 0 }
 
-    let(:label) { term_with_id(/label_of_/, widget.content) }
-    let(:selector) { term_with_id(/^disk_for_/, widget.content) }
+    let(:label) { find_widget(/label_of_/, widget.content) }
+    let(:selector) { find_widget(/^disk_for_/, widget.content) }
     let(:selector_items) { selector.params[2] }
 
     before do

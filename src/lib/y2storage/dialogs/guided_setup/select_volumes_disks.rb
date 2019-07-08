@@ -20,7 +20,7 @@
 require "yast"
 require "y2storage"
 require "y2storage/dialogs/guided_setup/base"
-require "y2storage/dialogs/guided_setup/disk_selector_widget"
+require "y2storage/dialogs/guided_setup/widgets/disk_selector"
 
 module Y2Storage
   module Dialogs
@@ -69,7 +69,12 @@ module Y2Storage
             settings.volumes_sets.to_enum.with_index.map do |vs, idx|
               next unless vs.proposed?
 
-              DiskSelectorWidget.new(settings, idx, analyzer.candidate_disks)
+              Widgets::DiskSelector.new(
+                idx,
+                settings,
+                candidate_disks: analyzer.candidate_disks,
+                disk_helper:     disk_helper
+              )
             end.compact
         end
 
