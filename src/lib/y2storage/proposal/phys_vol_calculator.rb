@@ -70,7 +70,7 @@ module Y2Storage
       # Subset of spaces that are located in acceptable devices
       #
       # Filters the original list to only include spaces in those disks that are
-      # acceptable for {#planned_vg}. Usually that means simply returning the original
+      # acceptable for the planned VG. Usually that means simply returning the original
       # list back.
       #
       # @param all_spaces [Array<FreeDiskSpace>] full set of spaces
