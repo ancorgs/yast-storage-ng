@@ -31,6 +31,10 @@ module Y2Storage
   #
   # When a new object is created, all settings are nil or [] in case of a list is
   # expected. See {#for_current_product} to initialize settings with some values.
+  #
+  # FIXME: this class contains a lot of unnecessary logic to support the legacy
+  # settings. Disabling this rubocop rule until that is fixed.
+  # rubocop:disable ClassLength
   class ProposalSettings
     include SecretAttributes
     include PartitioningFeatures
@@ -643,3 +647,4 @@ module Y2Storage
     end
   end
 end
+# rubocop:enable all
