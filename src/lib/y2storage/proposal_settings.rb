@@ -133,7 +133,7 @@ module Y2Storage
     #
     # @return [String, nil]
     def root_device
-      if allocate_mode?(:single_device)
+      if allocate_mode?(:device)
         root_volume ? root_volume.device : nil
       else
         @root_device
@@ -145,7 +145,7 @@ module Y2Storage
     # If {#allocate_volume_mode} is :auto, this simply sets the value of the
     # attribute.
     #
-    # If {#allocate_volume_mode} is :single_device this changes the value of
+    # If {#allocate_volume_mode} is :device this changes the value of
     # {VolumeSpecification#device} for the root volume and all its associated
     # volumes. In addition, it tries to adapt the value of the attribute for the
     # rest of the volumes in the most convenient way.
@@ -176,7 +176,7 @@ module Y2Storage
     #
     # @return [Array<String>]
     def candidate_devices
-      if allocate_mode?(:single_device)
+      if allocate_mode?(:device)
         # If any of the proposed volumes has no device assigned, the whole list
         # is invalid
         return nil if volumes.select(&:proposed).any? { |vol| vol.device.nil? }
@@ -192,7 +192,7 @@ module Y2Storage
     # If {#allocate_volume_mode} is :auto, this simply sets the value of the
     # attribute.
     #
-    # If {#allocate_volume_mode} is :single_device this changes the value of
+    # If {#allocate_volume_mode} is :device this changes the value of
     # {VolumeSpecification#device} for all volumes using elements from the given
     # list.
     def candidate_devices=(devices)
@@ -292,7 +292,7 @@ module Y2Storage
     # Volumes grouped by their location in the disks.
     #
     # This method is only useful when #allocate_volume_mode is set to
-    # :single_device. All the volumes that must be allocated in the same disk
+    # :device. All the volumes that must be allocated in the same disk
     # are grouped in a single {VolumeSpecificationsSet} object.
     #
     # The sorting of {#volumes} is honored as long as possible

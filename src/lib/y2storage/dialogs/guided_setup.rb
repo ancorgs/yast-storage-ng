@@ -123,14 +123,14 @@ module Y2Storage
         common_actions = { back: :back, cancel: :cancel, abort: :abort }
 
         {
-          auto:          {
+          auto:   {
             "ws_start"          => "select_disks",
             "select_disks"      => common_actions.merge(next: "select_root_disk"),
             "select_root_disk"  => common_actions.merge(next: "select_scheme"),
             "select_scheme"     => common_actions.merge(next: "select_filesystem"),
             "select_filesystem" => common_actions.merge(next: :next)
           },
-          single_device: {
+          device: {
             "ws_start"             => "select_scheme",
             "select_scheme"        => common_actions.merge(next: "select_filesystem"),
             "select_filesystem"    => common_actions.merge(next: "select_volumes_disks"),
