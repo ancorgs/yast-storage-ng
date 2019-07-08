@@ -173,7 +173,7 @@ module Y2Storage
         # If the planned_lvs are restricted to some particular disk, we likely
         # should only reuse LVMs with all PVs in that disk. Or maybe with at
         # least one PV in that disk. As usual, is not clear.
-        return false if planned_lvs.any?(:disk)
+        return false if planned_lvs.any?(&:disk)
 
         true
       end
