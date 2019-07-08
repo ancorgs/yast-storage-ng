@@ -158,7 +158,6 @@ describe Y2Storage::Dialogs::GuidedSetup::SelectScheme do
       end
     end
 
-
     context "when settings has not encryption password" do
       before do
         settings.encryption_password = nil

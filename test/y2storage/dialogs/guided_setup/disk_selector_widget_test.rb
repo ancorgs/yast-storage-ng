@@ -47,7 +47,7 @@ describe Y2Storage::Dialogs::GuidedSetup::DiskSelectorWidget do
       Y2Storage::VolumeSpecification.new(vol_features.merge("mount_point" => "/")),
       Y2Storage::VolumeSpecification.new(vol_features.merge("mount_point" => "swap")),
       home_vol,
-      spacewalk_vol,
+      spacewalk_vol
     ]
   end
 
@@ -65,7 +65,7 @@ describe Y2Storage::Dialogs::GuidedSetup::DiskSelectorWidget do
   let(:spacewalk_vol) do
     Y2Storage::VolumeSpecification.new(
       vol_features.merge(
-        "mount_point" => "/var/lib/spacewalk",
+        "mount_point"      => "/var/lib/spacewalk",
         "separate_vg_name" => "vg-spacewalk"
       )
     )

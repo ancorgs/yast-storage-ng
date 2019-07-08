@@ -123,7 +123,7 @@ module Y2Storage
         common_actions = { back: :back, cancel: :cancel, abort: :abort }
 
         {
-          auto: {
+          auto:          {
             "ws_start"          => "select_disks",
             "select_disks"      => common_actions.merge(next: "select_root_disk"),
             "select_root_disk"  => common_actions.merge(next: "select_scheme"),

@@ -194,13 +194,11 @@ module Y2Storage
     def candidate_devices=(devices)
       if allocate_mode?(:auto)
         @candidate_devices = devices
+      elsif devices.nil?
+        volumes.each { |vol| vol.device = nil }
       else
-        if devices.nil?
-          volumes.each { |vol| vol.device = nil }
-        else
-          volumes_sets.select(&:proposed?).each_with_index do |set, idx|
-            set.device = devices[idx] || devices.last
-          end
+        volumes_sets.select(&:proposed?).each_with_index do |set, idx|
+          set.device = devices[idx] || devices.last
         end
       end
     end
@@ -584,10 +582,10 @@ module Y2Storage
         if vol.separate_vg_name
           # There should not be two volumes with the same separate_vg_name. But
           # just in case, let's group them if that happens.
-          group = sets.find { |s| s.vg_name == vol.separate_vg_name}
+          group = sets.find { |s| s.vg_name == vol.separate_vg_name }
           type = :separate_lvm
         elsif lvm
-          group = sets.find {|s| s.type == :lvm}
+          group = sets.find { |s| s.type == :lvm }
           type = :lvm
         else
           group = nil

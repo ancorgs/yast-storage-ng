@@ -50,16 +50,16 @@ module Y2Storage
         end
 
         def dialog_content
-            content = volume_widgets.each_with_object(VBox()) do |widget, vbox|
-              vbox << VSpacing(1.4) unless vbox.empty?
-              vbox << widget.content
-            end
+          content = volume_widgets.each_with_object(VBox()) do |widget, vbox|
+            vbox << VSpacing(1.4) unless vbox.empty?
+            vbox << widget.content
+          end
 
-            HVCenter(
-              HSquash(
-                content
-              )
+          HVCenter(
+            HSquash(
+              content
             )
+          )
         end
 
         # Set of widgets to display, one for every volume specification set in the settings that is
