@@ -1,4 +1,4 @@
-# Copyright (c) [2018] SUSE LLC
+# Copyright (c) [2018-2019] SUSE LLC
 #
 # All Rights Reserved.
 #
@@ -154,6 +154,26 @@ module Y2Storage
         log.info "Trying to make a proposal with the following settings: #{settings}"
 
         begin
+          return try_with_each_permutation
+        rescue Error
+          next
+        end
+      end
+
+      raise error
+    end
+
+    def try_with_each_permutation
+      return try_with_each_target_size if settings.allocate_mode?(:auto)
+
+      error = default_proposal_error
+
+      disks_permutations.each do |permutation|
+        settings.volumes_sets.select(&:proposed?).reject(&:root?).each_with_index do |set, idx|
+          set.device = permutation[idx]
+        end
+
+        begin
           return try_with_each_target_size
         rescue Error
           next
@@ -229,13 +249,25 @@ module Y2Storage
     #
     # @return [Array<String>]
     def candidate_roots
-      return [settings.root_device] if settings.root_device
+      return [settings.root_device] if settings.allocate_mode?(:auto) && settings.root_device
+      #return [settings.root_device] if settings.explicit_root_device
 
       disk_names = settings.candidate_devices
 
       candidates = disk_names.map { |n| initial_devicegraph.find_by_name(n) }.compact
       candidates = candidates.sort_by(&:size).reverse
       candidates.map(&:name)
+    end
+
+    def disks_permutations
+      size = settings.volumes_sets.select(&:proposed?).reject(&:root?).size
+      disk_names = settings.explicit_candidate_devices
+
+      # FIXME: repeated_permutation does not guarantee stable sorting. Moreover,
+      # there is a lot to improve here regarding sorting
+      # Try first the more 'expansive' combinations, so the behavior is more
+      # similar to mode :auto.
+      disk_names.repeated_permutation(size).sort_by { |p| (p + [settings.root_device]).uniq.size }.reverse
     end
   end
 end
