@@ -48,11 +48,16 @@ module Y2Storage
         self.volume_entries = volumes.map { |str| Volume.new_from_str(str) }
       end
 
-      def dm_name(blk_device)
-        entry = volume_entries.find do |vol|
-          self.class.blk_device_names(blk_device).include?(vol.plain_name)
-        end
-        entry ? entry.dm_name : nil
+      def dm_name(device)
+        volume_entry(device)&.dm_name
+      end
+
+      def plain_name(device)
+        volume_entry(device)&.plain_name
+      end 
+
+      def for_device?(device)
+        !!volume_entry(device)
       end
 
       def add_device(device)
@@ -102,6 +107,20 @@ module Y2Storage
 
       attr_accessor :volume_entries
 
+      def volume_entry(device)
+        volume_entries.find do |vol|
+          if device.is?(:encryption)
+            device.dm_table_name == vol.dm_name
+          else
+            blk_device_names(blk_device).include?(vol.plain_name)
+          end
+        end
+      end
+
+      def blk_device_names(device)
+        [device.name] + device.udev_full_all
+      end
+
       class << self
         # Whether it's possible to use secure AES keys in this system
         #
@@ -122,19 +141,12 @@ module Y2Storage
           key
         end
 
-        # Finds an existing secure key that references the given block device in
+        # Finds an existing secure key that references the given device in
         # one of its "volumes" entries
         #
         # @return [SecureKey, nil] nil if no key is found for the device
-        def for_plain_device(device)
-          names_str = blk_device_names(device).join(",")
-
-          output = Yast::Execute.locally("zkey", "list", "--volumes", names_str, stdout: :capture)
-          parse_zkey_list(output).first
-        end
-
-        def blk_device_names(device)
-          [device.name] + device.udev_full_all
+        def for_device(device)
+          all.find { |key| key.for_device?(device) }
         end
 
         private

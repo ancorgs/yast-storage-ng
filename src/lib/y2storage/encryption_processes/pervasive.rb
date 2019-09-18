@@ -38,7 +38,7 @@ module Y2Storage
       end
 
       def create_device(blk_device, dm_name)
-        @secure_key = SecureKey.for_plain_device(blk_device)
+        @secure_key = SecureKey.for_device(blk_device)
         if @secure_key
           name_from_key = @secure_key.dm_name(blk_device)
           dm_name = name_from_key if name_from_key
@@ -101,8 +101,8 @@ module Y2Storage
 
       # @return [String]
       def execute_zkey_cryptsetup(device)
-        # TODO: proper name attribute
-        command = ["zkey", "cryptsetup", "--volumes", device.blk_device.name]
+        name = secure_key.plain_name(device)
+        command = ["zkey", "cryptsetup", "--volumes", name]
         Yast::Execute.locally(*command, stdout: :capture).lines.map(&:strip)
       end
 
