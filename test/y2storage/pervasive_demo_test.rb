@@ -28,6 +28,10 @@ describe "the pervasive prototype" do
     File.read(File.join(DATA_PATH, "zkey", "#{file}.txt"))
   end
 
+  def lszcrypt_output(file)
+    File.read(File.join(DATA_PATH, "lszcrypt", "#{file}.txt"))
+  end
+
   before do
     fake_scenario("several-dasds")
 
@@ -49,11 +53,15 @@ describe "the pervasive prototype" do
         "zkey-cryptsetup setvp --volumes /dev/whatever\n" \
         "third command"
       )
+
+    allow(Yast::Execute).to receive(:locally!).with("/sbin/lszcrypt", "--verbose", stdout: :capture)
+      .and_return lszcrypt
   end
 
   let(:manager) { Y2Storage::StorageManager.instance }
   let(:blk_device) { manager.staging.find_by_name("/dev/dasdc1") }
   let(:pervasive) { Y2Storage::EncryptionMethod::PERVASIVE_LUKS2 }
+  let(:lszcrypt) { "" }
 
   RSpec.shared_examples "zkey cryptsetup actions" do
     it "generates arguments for 'cryptsetup luksFormat'" do
@@ -109,5 +117,50 @@ describe "the pervasive prototype" do
     end
 
     include_examples "zkey cryptsetup actions"
+  end
+
+  describe "#available?" do
+    let(:zkey_list_volume) { "" }
+
+    context "if secure key is available" do
+      let(:lszcrypt) { lszcrypt_output("ok") }
+
+      it "returns true" do
+        enc = blk_device.encrypt(method: pervasive)
+        expect(enc.method.available?).to be true
+      end
+    end
+
+    context "if no secure key devices are available" do
+      let(:lszcrypt) { lszcrypt_output("no_devs") }
+
+      it "returns false" do
+        enc = blk_device.encrypt(method: pervasive)
+        expect(enc.method.available?).to be false
+      end
+    end
+
+    context "if secure key is not supported" do
+      let(:lszcrypt) { nil }
+
+      it "returns false" do
+        enc = blk_device.encrypt(method: pervasive)
+        expect(enc.method.available?).to be false
+      end
+    end
+
+    context "if lszcrypt tool is not available" do
+      let(:lszcrypt) { nil }
+
+      before do
+        allow(Yast::Execute).to receive(:locally!).with("/sbin/lszcrypt", "--verbose", stdout: :capture)
+        .and_raise Cheetah::ExecutionFailed
+      end
+
+      it "returns false" do
+        enc = blk_device.encrypt(method: pervasive)
+        expect(enc.method.available?).to be false
+      end
+    end
   end
 end

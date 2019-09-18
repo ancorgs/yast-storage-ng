@@ -107,8 +107,10 @@ module Y2Storage
         #
         # @return [Boolean]
         def available?
-          # TODO: likely implemented by calling lszcrypt
-          raise NotImplementedError
+          device_list = Yast::Execute.locally!("/sbin/lszcrypt", "--verbose", stdout: :capture)
+          device_list&.match?(/\sonline\s/) || false
+        rescue Exception
+          false
         end
 
         # @return [SecureKey]
