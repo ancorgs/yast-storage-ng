@@ -17,6 +17,7 @@
 # To contact SUSE LLC about this file by physical or electronic mail, you may
 # find current contact information at www.suse.com.
 
+require "fileutils"
 require "yast2/execute"
 require "y2storage/encryption_processes/secure_key_volume"
 
@@ -33,6 +34,7 @@ module Y2Storage
       # Location of the lszcrypt command
       LSZCRYPT = "/sbin/lszcrypt".freeze
       private_constant :ZKEY, :LSZCRYPT
+      ZKEY_CONFIG_DIR = "/etc/zkey"
 
       # @return [String] name of the secure key
       attr_reader :name
@@ -181,6 +183,17 @@ module Y2Storage
         # @return [SecureKey, nil] nil if no key is found for the device
         def for_device(device)
           all.find { |key| key.for_device?(device) }
+        end
+
+        def copy_repository(destdir)
+          if File.exist?(credentials_d) && destdir != "/"
+            log.warn "bla"
+            return
+          end
+
+          target = File.join(destdir, zkey_directory)
+          log.info "Copying zkey repository to #{target}"
+          FileUtils.cp_r(zkey_directory, target, preserve: true, remove_destination: true)
         end
 
         private

@@ -19,6 +19,7 @@
 
 require "yast"
 require "installation/finish_client"
+require "y2storage/encryption_processes/secure_key"
 
 module Y2Storage
   module Clients
@@ -43,6 +44,7 @@ module Y2Storage
       def write
         enable_multipath
         update_sysconfig
+        copy_zkey
         true
       end
 
@@ -68,6 +70,11 @@ module Y2Storage
         staging = StorageManager.instance.staging
         features = UsedStorageFeatures.new(staging).collect_features
         features.include?(:UF_MULTIPATH)
+      end
+
+      def copy_zkey
+        # FIXME: move the class out
+        EncryptionProcesses::SecureKey.copy_repository(Yast::Installation.destdir)
       end
     end
   end
