@@ -1,4 +1,13 @@
 -------------------------------------------------------------------
+Fri Mar  6 13:59:26 UTC 2020 - Imobach Gonzalez Sosa <igonzalezsosa@suse.com>
+
+- AutoYaST: do not append a number to the volume group name unless
+  it is needed (bsc#1115749).
+- AutoYaST: do not remove backing and caching devices for reused
+  Bcaches even when they are not marked to be reused in the profile.
+- 4.2.94
+
+-------------------------------------------------------------------
 Thu Mar  5 10:23:24 UTC 2020 - José Iván López González <jlopez@suse.com>
 
 - Fix unit tests for the progress dialog added in version 4.2.82
