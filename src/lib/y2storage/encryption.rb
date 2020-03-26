@@ -326,6 +326,7 @@ module Y2Storage
     def ensure_suitable_mount_by
       return if suitable_mount_by?(mount_by)
 
+      # Encryption#suitable_mount_by, que nunca incluye label o uuid de momento
       self.mount_by = Filesystems::MountByType.best_for(blk_device, suitable_mount_bys)
     end
 
@@ -383,11 +384,7 @@ module Y2Storage
     # @param type [Filesystems::MountByType]
     # @return [Boolean]
     def suitable_mount_by?(type)
-      return true if type.is?(:device)
-      return true if type.is?(:id) && blk_device.udev_ids.any?
-      return true if type.is?(:path) && blk_device.udev_paths.any?
-
-      false
+      # reimplement based in suitable_mount_bys
     end
 
     # List of all the mount_by types that are suitable for this encryption
@@ -396,9 +393,16 @@ module Y2Storage
     # @see #suitable_mount_by?
     #
     # @return [Array<Filesystems::MountByType>]
-    def suitable_mount_bys
-      Filesystems::MountByType.all.select { |type| suitable_mount_by?(type) }
+=begin
+    def suitable_mount_bys(only_known: false)
+      result = Filesystems::MountByType.all.select { |type| suitable_mount_by?(type) }
+      if only_known
+        result#.delete
+      end
+
+      result
     end
+=end
 
     # @see #adjust_crypt_options
     #

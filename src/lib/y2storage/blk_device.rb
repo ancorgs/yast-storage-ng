@@ -291,7 +291,7 @@ module Y2Storage
     # @!method possible_mount_bys
     #   Possible mount-by methods to reference the block device itself, regardless of its content
     #
-    #   @see #preferred_name
+    #   @see #reliable_path
     #
     #   @return [Array<Filesystems::MountByType>]
     storage_forward :possible_mount_bys, as: "Filesystems::MountByType"
@@ -680,8 +680,8 @@ module Y2Storage
     # this method always returns an option that can be used safely.
     #
     # @return [Filesystems::MountByType]
-    def preferred_mount_by
-      Filesystems::MountByType.best_for(self, possible_mount_bys)
+    def preferred_mount_by(only_known: false)
+      Filesystems::MountByType.best_for(self, suitable_mount_bys(only_known: only_known)
     end
 
     # Most suitable name to reference the block device
@@ -689,8 +689,11 @@ module Y2Storage
     # @see #preferred_mount_by
     #
     # @return [String]
-    def preferred_name
-      path_for_mount_by(preferred_mount_by)
+    def reliable_path
+      mount_by = preferred_mount_by(only_known: true)
+      path = path_for_mount_by(mount_by)
+      log.info "reliable_path based on #{mount_by.to_sym}: #{path}"
+      path
     end
 
     protected
@@ -705,6 +708,10 @@ module Y2Storage
         fs_type:      filesystem_type,
         partition_id: nil
       }
+    end
+
+    def suitable_mount_bys(only_known: false)
+      possible_mount_bys
     end
 
     def types_for_is

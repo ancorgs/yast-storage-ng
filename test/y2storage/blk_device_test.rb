@@ -1469,7 +1469,7 @@ describe Y2Storage::BlkDevice do
     end
   end
 
-  describe "#preferred_name" do
+  describe "#reliable_path" do
     let(:scenario) { "md-imsm1-devicegraph.xml" }
     let(:device_name) { "/dev/sda1" }
 
@@ -1482,7 +1482,7 @@ describe Y2Storage::BlkDevice do
       expect(Y2Storage::Filesystems::MountByType).to receive(:best_for)
         .with(device, all_suitable).and_return(by_path)
 
-      expect(device.preferred_name).to eq "/dev/disk/by-path/pci-0000:00:1f.2-ata-1-part1"
+      expect(device.reliable_path).to eq "/dev/disk/by-path/pci-0000:00:1f.2-ata-1-part1"
     end
   end
 end

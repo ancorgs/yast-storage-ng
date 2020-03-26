@@ -85,8 +85,8 @@ module Y2Storage
     # @see MountPoint#preferred_mount_by
     #
     # @return [Filesystems::MountByType]
-    def preferred_mount_by
-      with_mount_point(&:preferred_mount_by)
+    def preferred_mount_by(*args)
+      with_mount_point { |mp| mp.preferred_mount_by(*args) }
     end
 
     # Mount options

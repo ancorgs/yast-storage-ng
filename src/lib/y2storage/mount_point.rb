@@ -283,16 +283,19 @@ module Y2Storage
     # that value during the commit phase. In such case, DEVICE is used by the
     # library as fallback.
     #
-    # @param label [Boolean, nil] whether the associated filesystem has a label.
-    #   If set to nil, that is checked in the devicegraph. If set to true, it
-    #   will assume the filesystem has a label. If set to false, it will assume
-    #   there is no label, no matter what the devicegraph says.
+    # @param label [Boolean, nil] whether the associated filesystem has a label
+    #   (assuming labels are supported by the filesystem).
+    #   If set to nil, that is checked in the devicegraph. If set to true and
+    #   the filesystem supports having a label, it will assume the filesystem
+    #   has a label. If set to false, it will assume there is no label, no
+    #   matter what the devicegraph says.
     # @param encryption [Boolean, nil] whether the filesystem sits on top of an
     #   encrypted device. Regarding the possible values (nil, true and false) it
     #   behaves like the label argument.
+    # @param uuid [Boolean, nil]
     #
     # @return [Array<Filesystems::MountByType>]
-    def suitable_mount_bys(label: nil, encryption: nil)
+    def suitable_mount_bys(label: nil, encryption: nil, uuid: true)
       with_mount_point_for_suitable(encryption) do |mount_point|
         fs = mount_point.filesystem
 
@@ -309,6 +312,10 @@ module Y2Storage
 
         label = (fs.label.size > 0) if label.nil?
         candidates.delete(Filesystems::MountByType::LABEL) unless label
+
+        uuid = (fs.uuid.size > 0) if uuid.nil?
+        candidates.delete(Filesystems::MountByType::UUID) unless uuid
+
         candidates
       end
     end
@@ -329,12 +336,16 @@ module Y2Storage
     #
     # Note that this method does not take into account the currently assigned mount by value
     #
-    # Only the options that are indeed available are considered (see {#suitable_mount_bys}),
-    # which means this method always returns an option that can be used safely.
-    #
     # @return [Filesystems::MountByType]
-    def preferred_mount_by
-      Filesystems::MountByType.best_for(filesystem, suitable_mount_bys)
+    def preferred_mount_by(only_known: false)
+      suitable =
+        if only_known 
+          suitable_mount_bys(uuid: nil)
+        else
+          suitable_mount_bys
+        end
+
+      Filesystems::MountByType.best_for(filesystem, suitable)
     end
 
     # Whether {#mount_by} was explicitly set by the user

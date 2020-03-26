@@ -258,22 +258,24 @@ module Y2Storage
 
       # Most suitable file path to reference the filesystem
       #
+      # XXXOnly the options that are indeed available are considered (see {#suitable_mount_bys}),
+      # which means this method always returns an option that can be used safely.
+      #
       # @see Mountable#preferred_mount_by
       #
       # @return [String]
-      def preferred_name
-        path_for_mount_by(preferred_mount_by)
-      end
+      def reliable_path # chosen_path | finest_path | endorsed_path | recommended | supported | suggested | best | secure_path | robust_path | safe_path | reliable_path
+        log.info "checking bla - #{mount_by}"
+        path = path_for_mount_by(mount_by) if mount_by
+        if path
+          log.info "found by mount_by #{path}"
+          return path
+        end
 
-      # File path to reference the filesystem based on the current mount by option
-      #
-      # @see #mount_by
-      #
-      # @return [String, nil] nil if the name cannot be determined for the current mount by option
-      def mount_by_name
-        return nil unless mount_by
-
-        path_for_mount_by(mount_by)
+        preferred = preferred_mount_by(only_known: true)
+        path = path_for_mount_by(preferred)
+        log.info "found by preferred (#{preferred}): #{path}"
+        path
       end
 
       # Name (full path) that can be used to reference the filesystem for the given mount by option

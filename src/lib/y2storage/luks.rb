@@ -88,8 +88,9 @@ module Y2Storage
       super << :luks
     end
 
-    # @see Encryption#suitable_mount_by?
-    def suitable_mount_by?(type)
+    # @see BlkDevice#suitable_mount_bys
+    def suitable_mount_bys(only_known: false)
+      # TODO: adapt this... or maybe this is duplicating library logic???
       return true if super
       return true if type.is?(:uuid)
       return true if type.is?(:label) && self.type.is?(:luks2) && !label.empty?
