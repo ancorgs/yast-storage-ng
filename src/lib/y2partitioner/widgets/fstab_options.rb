@@ -840,18 +840,16 @@ module Y2Partitioner
       end
 
       def default_value
-        ITEMS.first
+        iocharset = filesystem.type.iocharset
+        ITEMS.include?(iocharset) ? iocharset : ITEMS.first
       end
 
       def supported_by_mount_path?
         return false if mount_path.nil?
 
-        # We used to disable the iocharset dialog for filesystems used for booting since
-        # iocharset=utf8 breaks VFAT case insensitivity (bsc#1080731).
-        #
-        # That's taken care of now in {Filesystems::Type#patch_iocharset}
-        # when we create a new file system.
-        true
+        # "iocharset=utf8" breaks VFAT case insensitivity (bsc#1080731).
+        # See also boot_fstab_options() in lib/y2storage/filesystems/type.rb
+        mount_path != "/boot" && !mount_path.start_with?("/boot/")
       end
 
       # @macro seeAbstractWidget
@@ -874,7 +872,8 @@ module Y2Partitioner
       ITEMS = ["", "437", "852", "932", "936", "949", "950"].freeze
 
       def default_value
-        ITEMS.first
+        cp = filesystem.type.codepage
+        ITEMS.include?(cp) ? cp : ITEMS.first
       end
 
       # @macro seeAbstractWidget
