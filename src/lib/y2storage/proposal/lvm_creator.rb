@@ -168,6 +168,7 @@ module Y2Storage
         missing = missing_vg_space(volume_group, space_size)
         while missing > DiskSize.zero
           lv_to_delete = delete_candidate(volume_group, missing)
+          byebug
           if lv_to_delete.nil?
             error_msg = "The volume group #{volume_group.vg_name} is not big enough"
             raise NoDiskSpaceError, error_msg
@@ -250,6 +251,7 @@ module Y2Storage
       # @param target_space [DiskSize] Required space
       def missing_vg_space(volume_group, target_space)
         available = volume_group.available_space
+        puts volume_group.number_of_free_extents
         if available > target_space
           DiskSize.zero
         else

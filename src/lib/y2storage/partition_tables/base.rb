@@ -68,6 +68,8 @@ module Y2Storage
       #
       # @param partition [Partition]
       def delete_partition(partition, *extra_args)
+        # Needed to enforce the view when deleting descendants
+        partition.remove_descendants
         storage_delete_partition(partition, *extra_args)
         Encryption.update_dm_names(devicegraph)
       end

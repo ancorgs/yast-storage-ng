@@ -192,6 +192,19 @@ describe Y2Storage::Proposal::LvmCreator do
             expect { creator.create_volumes(vg, pv_partitions) }.to raise_error(RuntimeError)
           end
         end
+
+        context "azofaifo" do
+          let(:scenario) { "lvm-types1.xml" }
+          let(:pv_partitions) { [] }
+
+          it "deletes" do
+            devicegraph = creator.create_volumes(vg, pv_partitions).devicegraph
+            reused_vg = devicegraph.lvm_vgs.first
+            lv_names = reused_vg.lvm_lvs.map(&:lv_name)
+            expect(lv_names).to_not include "lv2"
+            expect(lv_names).to include "lv1"
+          end
+        end
       end
 
       context "when make space policy is set to :remove" do

@@ -395,8 +395,10 @@ module Y2Storage
     end
 
     # Removes device descendants in the devicegraph
-    def remove_descendants
-      storage_remove_descendants
+    #
+    # TODO improve doc
+    def remove_descendants(view = View::REMOVE)
+      storage_remove_descendants(view)
       update_etc_status
     end
 
