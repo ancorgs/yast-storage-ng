@@ -82,6 +82,8 @@ module Y2Partitioner
 
         UIState.instance.select_row(dev.sid)
         buttons_set.device = dev if buttons_set
+        menu_bar = UIState.instance.menu_bar
+        menu_bar.device = dev if menu_bar
 
         nil
       end

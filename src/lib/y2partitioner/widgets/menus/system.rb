@@ -18,7 +18,7 @@
 # find current contact information at www.suse.com.
 
 require "yast"
-require "y2partitioner/execute_and_redraw"
+require "y2partitioner/widgets/menus/base"
 require "y2partitioner/dialogs/settings"
 require "y2partitioner/actions/rescan_devices"
 require "y2partitioner/actions/import_mount_points"
@@ -26,11 +26,8 @@ require "y2partitioner/actions/import_mount_points"
 module Y2Partitioner
   module Widgets
     module Menus
-      class System
+      class System < Base
         Yast.import "Stage"
-        include Yast::I18n
-        include Yast::UIShortcuts
-        include ExecuteAndRedraw
 
         def label
           _("&System")         
@@ -46,17 +43,6 @@ module Y2Partitioner
             Item("---"),
             Item(Id(:next), _("&Finish (Save and Exit)"))
           ]
-        end
-
-        def handle(event)
-          action = action_for(event)
-          if action
-            execute_and_redraw { action.run }
-          else
-            dialog = dialog_for(event)
-            dialog&.run
-            nil
-          end
         end
 
         private

@@ -18,35 +18,39 @@
 # find current contact information at www.suse.com.
 
 require "yast"
-require "y2partitioner/widgets/menus/base"
-require "y2partitioner/dialogs/summary_popup"
-require "y2partitioner/dialogs/device_graph"
+require "y2partitioner/execute_and_redraw"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class View < Base
-        def label
-          _("&View")
+      class Base
+        include Yast::I18n
+        include Yast::UIShortcuts
+        include ExecuteAndRedraw
+
+        def disabled_items
+          []
         end
 
-        def items
-          items = []
-          # TRANSLATORS: Menu items in the partitioner
-          items << Item(Id(:device_graphs), _("Device &Graphs...")) if Dialogs::DeviceGraph.supported?
-          items << Item(Id(:installation_summary), _("Installation &Summary..."))
-          items
+        def handle(event)
+          action = action_for(event)
+          if action
+            execute_and_redraw { action.run }
+          else
+            dialog = dialog_for(event)
+            dialog&.run
+            nil
+          end
         end
 
         private
 
         def dialog_for(event)
-          case event
-          when :device_graphs
-            Dialogs::DeviceGraph.new
-          when :installation_summary
-            Dialogs::SummaryPopup.new
-          end
+          nil
+        end
+
+        def action_for(event)
+          nil
         end
       end
     end

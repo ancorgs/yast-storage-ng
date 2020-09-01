@@ -33,6 +33,8 @@ module Y2Partitioner
     # @return [Widgets::OverviewTreePager]
     attr_accessor :overview_tree_pager
 
+    attr_accessor :menu_bar
+
     # Hash listing all the items with children of the tree and specifying whether
     # such item should be expanded (true) or collapsed (false) in the next redraw.
     #

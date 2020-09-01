@@ -63,8 +63,12 @@ module Y2Partitioner
         overview_tree_pager = Widgets::OverviewTreePager.new(hostname)
         UIState.instance.overview_tree_pager = overview_tree_pager
 
+        # TODO: after we have a better mechanism, let's store a reference to the menu in UIState
+        menu_bar = Widgets::MainMenuBar.new
+        UIState.instance.menu_bar = menu_bar
+
         VBox(
-          Widgets::MainMenuBar.new,
+          menu_bar,
           MarginBox(
             0.5,
             0.5,
