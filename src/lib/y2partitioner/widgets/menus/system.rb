@@ -30,12 +30,15 @@ module Y2Partitioner
         Yast.import "Stage"
 
         def label
-          _("&System")         
+          _("&Partitioner")         
         end
 
         def items
           items = [Item(Id(:rescan_devices), _("R&escan Devices"))]
-          items << Item(Id(:import_mount_points), _("&Import Mount Points...")) if installation?
+          items << Item(Id(:import_mount_points), _("&Import Mount Points..."))# if installation?
+          items << Item("---")
+          items << Item(Id(:device_graphs), _("Device &Graphs..."))# if Dialogs::DeviceGraph.supported?
+          items << Item(Id(:installation_summary), _("Installation &Summary..."))
           items += [
             Item(Id(:settings), _("Se&ttings...")),
             Item("---"),
@@ -61,8 +64,13 @@ module Y2Partitioner
         end
 
         def dialog_for(event)
-          if event == :settings
+          case event
+          when :settings
             Dialogs::Settings.new
+          when :device_graphs
+            Dialogs::DeviceGraph.new
+          when :installation_summary
+            Dialogs::SummaryPopup.new
           end
         end
       end

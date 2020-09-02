@@ -21,6 +21,7 @@ require "yast"
 require "cwm"
 require "y2partitioner/widgets/menus/system"
 require "y2partitioner/widgets/menus/view"
+require "y2partitioner/widgets/menus/add"
 require "y2partitioner/widgets/menus/configure"
 require "y2partitioner/widgets/menus/modify"
 
@@ -108,26 +109,13 @@ module Y2Partitioner
 
       # List of buttons that make sense for the current target device
       def calculate_menus
-        general_menus + device_menus
-      end
-
-      def general_menus
-        @general_menus ||= [
-          Menus::System.new,
-          Menus::View.new,
-          Menus::Configure.new,
-        ]
+        [Menus::System.new] + device_menus + [Menus::Configure.new]
       end
 
       def device_menus
         return [] if device.nil?
 
-        if device.is?(:software_raid, :disk_device, :partition)
-          return [Menus::Modify.new(device)]
-        end
-
-        # Returns no menus if the device is not supported
-        []
+        [ Menus::Modify.new(device), Menus::Add.new(device) ]
       end
 
       def disable_menu_items(*ids)
