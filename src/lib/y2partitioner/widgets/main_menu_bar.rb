@@ -20,7 +20,10 @@
 require "yast"
 require "cwm"
 require "y2partitioner/widgets/menus/system"
-require "y2partitioner/widgets/menus/view"
+require "y2partitioner/widgets/menus/add"
+require "y2partitioner/widgets/menus/partitions"
+require "y2partitioner/widgets/menus/lvs"
+require "y2partitioner/widgets/menus/subvolumes"
 require "y2partitioner/widgets/menus/configure"
 require "y2partitioner/widgets/menus/modify"
 
@@ -114,20 +117,31 @@ module Y2Partitioner
       def general_menus
         @general_menus ||= [
           Menus::System.new,
-          Menus::View.new,
           Menus::Configure.new,
+          Menus::Add.new
         ]
       end
 
       def device_menus
         return [] if device.nil?
 
-        if device.is?(:software_raid, :disk_device, :partition)
-          return [Menus::Modify.new(device)]
+        entries = [Menus::Modify.new(device)]
+        if device.is?(:disk_device, :software_raid)
+          entries << Menus::Partitions.new(device)
         end
+        if device.is?(:lvm_vg)
+          entries << Menus::Lvs.new(device)
+        end
+        if subvolumes?
+          entries << Menus::Subvolumes.new(device)
+        end
+        entries
+      end
 
-        # Returns no menus if the device is not supported
-        []
+      def subvolumes?
+        return true if device.is?(:btrfs)
+
+        device.is?(:blk_device) && device.formatted_as?(:btrfs)
       end
 
       def disable_menu_items(*ids)
