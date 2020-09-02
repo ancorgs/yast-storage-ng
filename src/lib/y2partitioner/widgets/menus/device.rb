@@ -19,34 +19,34 @@
 
 require "yast"
 require "y2partitioner/widgets/menus/base"
-require "y2partitioner/dialogs/summary_popup"
-require "y2partitioner/dialogs/device_graph"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class View < Base
-        def label
-          _("&View")
-        end
-
-        def items
-          items = []
-          # TRANSLATORS: Menu items in the partitioner
-          items << Item(Id(:device_graphs), _("Device &Graphs...")) if Dialogs::DeviceGraph.supported?
-          items << Item(Id(:installation_summary), _("Installation &Summary..."))
-          items
+      class Device < Base
+        def initialize(device)
+          @device_sid = device.sid unless device.nil?
         end
 
         private
 
-        def dialog_for(event)
-          case event
-          when :device_graphs
-            Dialogs::DeviceGraph.new
-          when :installation_summary
-            Dialogs::SummaryPopup.new
-          end
+        # @return [Integer] device sid
+        attr_reader :device_sid
+
+        # Current devicegraph
+        #
+        # @return [Y2Storage::Devicegraph]
+        def working_graph
+          DeviceGraphs.instance.current
+        end
+
+        # Device on which to act
+        #
+        # @return [Y2Storage::Device]
+        def device
+          return nil unless device_sid
+
+          working_graph.find_device(device_sid)
         end
       end
     end

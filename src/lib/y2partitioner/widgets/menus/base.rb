@@ -32,6 +32,10 @@ module Y2Partitioner
           []
         end
 
+        def id
+          :menu
+        end
+
         def handle(event)
           action = action_for(event)
           if action
