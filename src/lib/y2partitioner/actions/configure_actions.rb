@@ -246,6 +246,7 @@ module Y2Partitioner
 
       # @see ConfigureAction#supported?
       def supported?
+        return true
         Yast::Arch.s390
       end
     end

@@ -18,43 +18,29 @@
 # find current contact information at www.suse.com.
 
 require "yast"
-require "y2partitioner/execute_and_redraw"
+require "y2partitioner/widgets/menus/device"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class Base
-        include Yast::I18n
-        include Yast::UIShortcuts
-        include ExecuteAndRedraw
-
-        def disabled_items
-          []
+      class Disk < Device
+        def label
+          _("Hard Disk")
         end
 
         def id
-          :menu
+          :m_disk
         end
 
-        def handle(event)
-          action = action_for(event)
-          if action
-            execute_and_redraw { action.run }
-          else
-            dialog = dialog_for(event)
-            dialog&.run
-            nil
-          end
-        end
+        def items
+          items = []
 
-        private
-
-        def dialog_for(event)
-          nil
-        end
-
-        def action_for(event)
-          nil
+          items << Item(Id(:menu_disk_edit), _("Edit..."))
+          items << Item("---")
+          items << Item(Id(:menu_disk_edit), _("Partitions"))
+          items << Item(Id(:menu_disk_new_ptable), _("&Create New Partition Table..."))
+          items << Item(Id(:menu_disk_clone_ptable), _("Clone Partitions to Another Device..."))
+          items
         end
       end
     end

@@ -18,43 +18,35 @@
 # find current contact information at www.suse.com.
 
 require "yast"
-require "y2partitioner/execute_and_redraw"
+require "y2partitioner/widgets/menus/device"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class Base
-        include Yast::I18n
-        include Yast::UIShortcuts
-        include ExecuteAndRedraw
-
-        def disabled_items
-          []
+      class Partitions < Device
+        def label
+          _("&Partition")
         end
 
         def id
-          :menu
+          :m_partitions
         end
 
-        def handle(event)
-          action = action_for(event)
-          if action
-            execute_and_redraw { action.run }
-          else
-            dialog = dialog_for(event)
-            dialog&.run
-            nil
-          end
+        def items
+          items = []
+
+          items << Item(Id(:menu_part_add), _("Add Partition..."))
+          items << Item(Id(:menu_part_edit), _("Edit..."))
+          items << Item(Id(:menu_part_resize), "Resize...")
+          items << Item(Id(:menu_part_move), _("&Move..."))
+          items << Item(Id(:menu_part_delete), _("&Delete"))
+          items
         end
 
-        private
+        def disabled_items
+          return [] if device.nil? || device.is?(:partition)
 
-        def dialog_for(event)
-          nil
-        end
-
-        def action_for(event)
-          nil
+          [:menu_part_edit, :menu_part_resize, :menu_part_move, :menu_part_delete]
         end
       end
     end

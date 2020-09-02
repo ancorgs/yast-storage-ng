@@ -20,7 +20,13 @@
 require "yast"
 require "cwm"
 require "y2partitioner/widgets/menus/system"
-require "y2partitioner/widgets/menus/view"
+require "y2partitioner/widgets/menus/disk"
+require "y2partitioner/widgets/menus/raid"
+require "y2partitioner/widgets/menus/bcache"
+require "y2partitioner/widgets/menus/add"
+require "y2partitioner/widgets/menus/partitions"
+require "y2partitioner/widgets/menus/lvm"
+require "y2partitioner/widgets/menus/subvolumes"
 require "y2partitioner/widgets/menus/configure"
 require "y2partitioner/widgets/menus/modify"
 
@@ -93,7 +99,7 @@ module Y2Partitioner
       end
 
       def items
-        menus.map { |m| Menu(m.label, m.items) }
+        menus.map { |m| Menu(Id(m.id), m.label, m.items) }
       end
 
       def disabled_items
@@ -104,30 +110,41 @@ module Y2Partitioner
       def refresh
         Yast::UI.ChangeWidget(Id(id), :Items, items)
         disable_menu_items(*disabled_items)
+        disable_menu_items(*disabled_menus)
       end
 
       # List of buttons that make sense for the current target device
       def calculate_menus
-        general_menus + device_menus
-      end
-
-      def general_menus
-        @general_menus ||= [
+        [
           Menus::System.new,
-          Menus::View.new,
-          Menus::Configure.new,
+          Menus::Disk.new(device),
+          Menus::Raid.new(device),
+          Menus::Bcache.new(device),
+          Menus::Partitions.new(device),
+          Menus::Lvm.new(device),
+          Menus::Subvolumes.new(device)
         ]
       end
 
-      def device_menus
-        return [] if device.nil?
+      def disabled_menus
+        return [:m_disk, :m_raid, :m_raid, :m_bcache, :m_partition, :m_lvm, :m_btrfs] if device.nil?
 
-        if device.is?(:software_raid, :disk_device, :partition)
-          return [Menus::Modify.new(device)]
+        disabled = []
+
+        if !enabled_disk?
+          disabled << :m_disk
+        end
+        if !device.is?(:disk_device, :software_raid, :partition, :bcache)
+          disabled << :m_partitions
         end
 
-        # Returns no menus if the device is not supported
-        []
+        disabled
+      end
+
+      def enabled_disk?
+        return true if device.is?(:disk_device)
+
+        device.is?(:partition) && device.partitionable.is?(:disk_device)
       end
 
       def disable_menu_items(*ids)

@@ -19,6 +19,7 @@
 
 require "yast"
 require "y2partitioner/widgets/menus/base"
+require "y2partitioner/widgets/menus/configure"
 require "y2partitioner/dialogs/settings"
 require "y2partitioner/actions/rescan_devices"
 require "y2partitioner/actions/import_mount_points"
@@ -30,14 +31,18 @@ module Y2Partitioner
         Yast.import "Stage"
 
         def label
-          _("&System")         
+          _("System")         
         end
 
         def items
           items = [Item(Id(:rescan_devices), _("R&escan Devices"))]
-          items << Item(Id(:import_mount_points), _("&Import Mount Points...")) if installation?
+          items << Item(Id(:import_mount_points), _("&Import Mount Points..."))# if installation?
+          items << Menu("Configure", Menus::Configure.new.items)
+          items << Item("---")
+          items << Item(Id(:device_graphs), _("Device &Graphs..."))# if Dialogs::DeviceGraph.supported?
+          items << Item(Id(:installation_summary), _("Installation &Summary..."))
           items += [
-            Item(Id(:settings), _("Se&ttings...")),
+            Item(Id(:settings), _("Partitioner Se&ttings...")),
             Item("---"),
             Item(Id(:abort), _("Abo&rt (Abandon Changes)")),
             Item("---"),
@@ -61,8 +66,13 @@ module Y2Partitioner
         end
 
         def dialog_for(event)
-          if event == :settings
+          case event
+          when :settings
             Dialogs::Settings.new
+          when :device_graphs
+            Dialogs::DeviceGraph.new
+          when :installation_summary
+            Dialogs::SummaryPopup.new
           end
         end
       end
