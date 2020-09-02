@@ -20,7 +20,10 @@
 require "yast"
 require "cwm"
 require "y2partitioner/widgets/menus/system"
-require "y2partitioner/widgets/menus/view"
+require "y2partitioner/widgets/menus/add"
+require "y2partitioner/widgets/menus/partitions"
+require "y2partitioner/widgets/menus/lvs"
+require "y2partitioner/widgets/menus/subvolumes"
 require "y2partitioner/widgets/menus/configure"
 require "y2partitioner/widgets/menus/modify"
 
@@ -93,7 +96,7 @@ module Y2Partitioner
       end
 
       def items
-        menus.map { |m| Menu(m.label, m.items) }
+        menus.map { |m| Menu(Id(m.id), m.label, m.items) }
       end
 
       def disabled_items
@@ -104,6 +107,7 @@ module Y2Partitioner
       def refresh
         Yast::UI.ChangeWidget(Id(id), :Items, items)
         disable_menu_items(*disabled_items)
+        disable_menu_items(*disabled_menus)
       end
 
       # List of buttons that make sense for the current target device
@@ -114,20 +118,43 @@ module Y2Partitioner
       def general_menus
         @general_menus ||= [
           Menus::System.new,
-          Menus::View.new,
           Menus::Configure.new,
+          Menus::Add.new
         ]
       end
 
       def device_menus
         return [] if device.nil?
 
-        if device.is?(:software_raid, :disk_device, :partition)
-          return [Menus::Modify.new(device)]
+        entries = [Menus::Modify.new(device)]
+        entries << Menus::Partitions.new(device)
+        entries << Menus::Lvs.new(device)
+        entries << Menus::Subvolumes.new(device)
+        entries
+      end
+
+      def disabled_menus
+        return [:m_modify, :m_partitions, :m_lvs, :m_subvolumes] if device.nil?
+
+        disabled = []
+
+        if !device.is?(:disk_device, :software_raid, :partition)
+          disabled << :m_partitions
+        end
+        if !device.is?(:lvm_vg, :lvm_lv)
+          disabled << :m_lvs
+        end
+        if !subvolumes?
+          disabled << :m_subvolumes
         end
 
-        # Returns no menus if the device is not supported
-        []
+        disabled
+      end
+
+      def subvolumes?
+        return true if device.is?(:btrfs)
+
+        device.is?(:blk_device) && device.formatted_as?(:btrfs)
       end
 
       def disable_menu_items(*ids)

@@ -18,43 +18,35 @@
 # find current contact information at www.suse.com.
 
 require "yast"
-require "y2partitioner/execute_and_redraw"
+require "y2partitioner/widgets/menus/base"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class Base
-        include Yast::I18n
-        include Yast::UIShortcuts
-        include ExecuteAndRedraw
-
-        def disabled_items
-          []
-        end
-
-        def id
-          :menu
-        end
-
-        def handle(event)
-          action = action_for(event)
-          if action
-            execute_and_redraw { action.run }
-          else
-            dialog = dialog_for(event)
-            dialog&.run
-            nil
-          end
+      class Device < Base
+        def initialize(device)
+          @device_sid = device.sid unless device.nil?
         end
 
         private
 
-        def dialog_for(event)
-          nil
+        # @return [Integer] device sid
+        attr_reader :device_sid
+
+        # Current devicegraph
+        #
+        # @return [Y2Storage::Devicegraph]
+        def working_graph
+          DeviceGraphs.instance.current
         end
 
-        def action_for(event)
-          nil
+        # Device on which to act
+        #
+        # @return [Y2Storage::Device]
+        def device
+          return nil unless device_sid
+
+          working_graph.find_device(device_sid)
         end
       end
     end
