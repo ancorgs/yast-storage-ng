@@ -18,27 +18,49 @@
 # find current contact information at www.suse.com.
 
 require "yast"
-require "y2partitioner/widgets/menus/base"
+require "y2partitioner/widgets/menus/device"
 require "y2partitioner/dialogs/summary_popup"
 require "y2partitioner/dialogs/device_graph"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class View < Base
+      class View < Device
         def label
           _("&View")
         end
 
         def items
           items = []
+          items << Item(Id(:view_used_devices), "Used Devices")
+          items << Item(Id(:view_partitions), "Partitions")
+          items << Item(Id(:view_lvs), "Logical Volumes")
+          items << Item(Id(:view_subvolumes), "Btrfs Subvolumes")
+          items << Item("---")
           # TRANSLATORS: Menu items in the partitioner
           items << Item(Id(:device_graphs), _("Device &Graphs...")) if Dialogs::DeviceGraph.supported?
           items << Item(Id(:installation_summary), _("Installation &Summary..."))
           items
         end
 
+        def disabled_items
+          return [] if device.nil?
+
+          disabled = []
+          disabled << :view_used_devices unless device.is?(:software_raid, :btrfs)
+          disabled << :view_partitions unless device.is?(:software_raid, :disk_device)
+          disabled << :view_lvs unless device.is?(:lvm_vg)
+          disabled << :view_subvolumes unless subvolumes?
+          disabled
+        end
+
         private
+
+        def subvolumes?
+          return true if device.is?(:btrfs)
+
+          device.is?(:blk_device) && device.formatted_as?(:btrfs)
+        end
 
         def dialog_for(event)
           case event

@@ -18,66 +18,66 @@
 # find current contact information at www.suse.com.
 
 require "yast"
-require "y2partitioner/widgets/menus/base"
+require "y2partitioner/widgets/menus/device"
 require "y2partitioner/actions/delete_md"
 require "y2partitioner/actions/delete_partition"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class Modify < Base
-        def initialize(device)
-          @device_sid = device.sid unless device.nil?
-        end
-
+      class Modify < Device
         def label
-          _("&Modify")
+          _("&Edit")
         end
 
         def items
+          return [Item("---")] if device.nil?
+
+          add_types = [
+            Item("RAID"), Item("LVM Volume Group"), Item("Btrfs"), Item("Bcache")
+          ]
+          add_types += [
+            Item("---"),
+            Item(Id(:add_partition), "Partition"),
+            Item(Id(:add_lv), "LVM Logical Volume"),
+            Item(Id(:add_subvolume), "Btrfs Subvolume")
+          ]
+
           items = []
+          items << Menu(Id(:menu_add), _("Add"), add_types)
           items << Item(Id(:menu_edit), _("&Edit..."))
           items << Item(Id(:menu_delete), _("&Delete"))
-
-          if device.is?(:partition)
-            items << Item("---")
-            items << Item(Id(:menu_resize), _("&Resize"))
-            items << Item(Id(:menu_move), _("&Move"))
-          elsif device.is?(:software_raid, :disk_device)
-            items << Item("---")
-            items << Item(Id(:menu_create_ptable), _("&Create New Partition Table"))
-          end
+          items << Item(Id(:menu_delete_all), _("&Delete All"))
+          items << Item("---")
+          items << Item(Id(:menu_resize), _("&Resize"))
+          items << Item(Id(:menu_move), _("&Move"))
+          items << Item(Id(:menu_devices), "Change Used Devices...")
 
           items
         end
 
         def disabled_items
-          if device.is?(:disk_device)
-            [:menu_delete]
-          else
-            []
-          end
+          return [] if device.nil?
+
+          disabled = []
+          disabled << :menu_edit if device.is?(:lvm_vg)
+          disabled << :menu_resize unless device.is?(:partition, :lvm_lv)
+          disabled << :menu_devices unless device.is?(:software_raid, :btrfs, :lvm_vg)
+          disabled << :menu_move unless device.is?(:partition)
+          disabled << :menu_delete if device.is?(:disk_device)
+          disabled << :add_partition unless device.is?(:software_raid, :disk_device, :partition)
+          disabled << :add_lv unless device.is?(:lvm_vg, :lvm_lv)
+          disabled << :add_subvolume unless subvolumes?
+
+          disabled
         end
 
         private
 
-        # @return [Integer] device sid
-        attr_reader :device_sid
+        def subvolumes?
+          return true if device.is?(:btrfs)
 
-        # Current devicegraph
-        #
-        # @return [Y2Storage::Devicegraph]
-        def working_graph
-          DeviceGraphs.instance.current
-        end
-
-        # Device on which to act
-        #
-        # @return [Y2Storage::Device]
-        def device
-          return nil unless device_sid
-
-          working_graph.find_device(device_sid)
+          device.is?(:blk_device) && device.formatted_as?(:btrfs)
         end
 
         def action_for(event)
