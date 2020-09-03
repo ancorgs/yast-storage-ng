@@ -19,39 +19,33 @@
 
 require "yast"
 require "y2partitioner/widgets/menus/device"
-require "y2partitioner/dialogs/summary_popup"
-require "y2partitioner/dialogs/device_graph"
-require "y2partitioner/actions/go_to_device_tab"
-require "y2partitioner/ui_state"
 
 module Y2Partitioner
   module Widgets
     module Menus
-      class View < Base
+      class Options < Device
         def label
-          _("&View")
+          _("Actions")
         end
 
         def items
+          return [Item("---")] if device.nil?
+
           items = []
-          # TRANSLATORS: Menu items in the partitioner
-          items << Item(Id(:device_graphs), _("Device &Graphs...")) if Dialogs::DeviceGraph.supported?
-          items << Item(Id(:installation_summary), _("Installation &Summary..."))
-          items << Item(Id(:settings), _("Partitioner Se&ttings..."))
+          items << Item(Id(:menu_create_ptable), _("Create New Partition Table..."))
+          items << Item(Id(:menu_clone_ptable), _("Clone Partitions to Another Device..."))
+
           items
         end
 
-        private
+        def disabled_items
+          return [] if device.nil?
 
-        def dialog_for(event)
-          case event
-          when :device_graphs
-            Dialogs::DeviceGraph.new
-          when :installation_summary
-            Dialogs::SummaryPopup.new
-          when :settings
-            Dialogs::Settings.new
-          end
+          disabled = []
+          disabled << :menu_create_ptable unless device.is?(:software_raid, :disk_device)
+          disabled << :menu_create_ptable unless device.is?(:disk_device)
+
+          disabled
         end
       end
     end
