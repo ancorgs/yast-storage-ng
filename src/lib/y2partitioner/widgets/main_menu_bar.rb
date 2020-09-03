@@ -23,6 +23,7 @@ require "y2partitioner/widgets/menus/system"
 require "y2partitioner/widgets/menus/view"
 require "y2partitioner/widgets/menus/configure"
 require "y2partitioner/widgets/menus/modify"
+require "y2partitioner/widgets/menus/options"
 
 module Y2Partitioner
   module Widgets
@@ -108,14 +109,12 @@ module Y2Partitioner
 
       # List of buttons that make sense for the current target device
       def calculate_menus
-        general_menus + device_menus
-      end
-
-      def general_menus
-        @general_menus ||= [
+        [
           Menus::System.new,
-          Menus::View.new,
-          Menus::Configure.new,
+          Menus::Modify.new(device),
+          Menus::View.new(device),
+          Menus::Options.new(device),
+          Menus::Configure.new
         ]
       end
 

@@ -35,9 +35,9 @@ module Y2Partitioner
 
         def items
           items = [Item(Id(:rescan_devices), _("R&escan Devices"))]
-          items << Item(Id(:import_mount_points), _("&Import Mount Points...")) if installation?
+          items << Item(Id(:import_mount_points), _("&Import Mount Points..."))# if installation?
           items += [
-            Item(Id(:settings), _("Se&ttings...")),
+            Item(Id(:settings), _("Partitioner Se&ttings...")),
             Item("---"),
             Item(Id(:abort), _("Abo&rt (Abandon Changes)")),
             Item("---"),
