@@ -11,14 +11,15 @@ module Y2Partitioner
       # Overrides default behavior of tabs to register the new state before
       # doing the real switch
       def switch_page(page)
-        UIState.instance.switch_to_tab(page.label)
+        target = (page == default_page) ? nil : page.label
+        UIState.instance.switch_to_tab(target)
         super
       end
 
       # Ensures tabs are properly initialized after a redraw according to
       # {UIState}.
       def initial_page
-        find_initial_page || super
+        find_initial_page || default_page
       end
 
       def find_initial_page
@@ -43,11 +44,13 @@ module Y2Partitioner
 
     # @see Tabs
     class DumbTabPager < CWM::DumbTabPager
+      alias_method :default_page, :initial_page
       include TabsWithState
     end
 
     # @see Tabs
     class PushButtonTabPager < CWM::PushButtonTabPager
+      alias_method :default_page, :initial_page
       include TabsWithState
     end
   end
