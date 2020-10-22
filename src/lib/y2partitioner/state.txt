@@ -3,18 +3,14 @@ current
 initialization
   -> always to the first disk
 
-active_tab
-  -> 
 selected_row
-  -> In System, when deleting an LV, it doesn't go back to its VG
+  X In System or the general LVM table, after deleting an LV it doesn't select its VG
 
-  -> When creating a btrfs in its corresponding section, not selected
+  X When creating a btrfs in its corresponding section, not selected
+
+  -> When creating a mono-device btrfs in the system table, not selected
 
   -> Select a device page. The remembered row is selected. Ok.
      Go to "Used Devices". The remembered row is selected. Ok.
      Go back to "Overview" of the same page. The first row is selected. Wrong.
      Visit another page and come back to this. The remembered row is selected.
-
-  -> In system, edit used devices, then add a LV. The new LV doesn't get selected.
-     Not always reproducible. Not even sure it's true :-(
-
