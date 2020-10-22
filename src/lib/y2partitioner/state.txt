@@ -8,7 +8,7 @@ selected_row
 
   X When creating a btrfs in its corresponding section, not selected
 
-  -> When creating a mono-device btrfs in the system table, not selected
+  X When creating a mono-device btrfs in the system table, not selected
 
   -> Select a device page. The remembered row is selected. Ok.
      Go to "Used Devices". The remembered row is selected. Ok.
