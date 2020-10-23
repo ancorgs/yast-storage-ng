@@ -18,6 +18,7 @@
 # find current contact information at www.suse.com.
 
 require "cwm/widget"
+require "y2partitioner/ui_state"
 require "y2partitioner/widgets/device_table_entry"
 require "y2partitioner/widgets/configurable_blk_devices_table"
 require "y2partitioner/widgets/disk_bar_graph"
@@ -54,11 +55,13 @@ module Y2Partitioner
         return @contents if @contents
 
         buttons = device_buttons
+        table_widget = table(buttons)
         lines = [
           bar_graph,
-          table(buttons),
+          table_widget,
           Left(buttons)
         ].compact
+        UIState.instance.current_table = table_widget
         @contents = VBox(*lines)
       end
 

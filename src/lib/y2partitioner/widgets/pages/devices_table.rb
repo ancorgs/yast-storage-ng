@@ -44,6 +44,7 @@ module Y2Partitioner
         def contents
           return @contents if @contents
 
+          UIState.instance.current_table = table
           @contents = VBox(
             table,
             Left(device_buttons),

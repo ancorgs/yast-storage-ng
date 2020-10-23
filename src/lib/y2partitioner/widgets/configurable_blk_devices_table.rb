@@ -21,9 +21,12 @@ require "yast"
 require "cwm/table"
 
 require "y2partitioner/device_graphs"
+require "y2partitioner/ui_state"
 require "y2partitioner/widgets/blk_devices_table"
 require "y2partitioner/widgets/columns"
 require "y2partitioner/dialogs/device_description"
+
+Yast.import "UI"
 
 module Y2Partitioner
   module Widgets
@@ -55,6 +58,7 @@ module Y2Partitioner
         return if devices.empty? # do nothing if there is nothing in table
 
         self.value = initial_entry.row_id
+        update_open_items
         handle_selected
       end
 
@@ -226,6 +230,12 @@ module Y2Partitioner
         return nil if device.multidevice?
 
         entry(device.plain_blk_devices.first.sid)
+      end
+
+      def update_open_items
+        #require "byebug"
+        #byebug
+        #Yast::UI.ChangeWidget(Id(widget_id), :OpenItems, algo)
       end
     end
   end

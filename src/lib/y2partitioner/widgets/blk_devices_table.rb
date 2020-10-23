@@ -22,6 +22,8 @@ require "cwm/table"
 require "y2partitioner/icons"
 require "y2partitioner/widgets/help"
 
+Yast.import "UI"
+
 module Y2Partitioner
   module Widgets
     # Abstract class to unify the definition of table widgets used to
@@ -45,7 +47,12 @@ module Y2Partitioner
 
       # @see CWM::Table#items
       def items
-        entries.map { |e| e.table_item(cols) }
+        @items ||= entries.map { |e| e.table_item(cols) }
+      end
+
+      def contents
+        @items = nil
+        super
       end
 
       # Updates table content
@@ -58,6 +65,17 @@ module Y2Partitioner
       # @return [Array<Y2Storage::BlkDevice>]
       def devices
         entries.flat_map(&:all_devices)
+      end
+
+      def open_items
+        open_items = Yast::UI.QueryWidget(Id(widget_id), :OpenItems)
+        if open_items.nil?
+          puts "QUE PAAASA: #{widget_id}"
+          return {}
+        end
+        puts "Bien: #{widget_id}"
+        open_items = open_items.keys
+        Hash[all_items.map { |i| [i.id, open_items.include?(i.id)] }]
       end
 
       protected
@@ -82,6 +100,14 @@ module Y2Partitioner
 
       def cols
         @cols ||= columns.map(&:new)
+      end
+
+      def all_items
+        items.flat_map { |item| item_with_descendants(item) }
+      end
+
+      def item_with_descendants(item)
+        [item] + item.children.flat_map { |child| item_with_descendants(child) }
       end
     end
   end

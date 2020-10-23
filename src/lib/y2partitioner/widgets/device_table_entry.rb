@@ -18,6 +18,8 @@
 # find current contact information at www.suse.com.
 
 require "yast"
+require "cwm/table"
+require "y2partitioner/ui_state"
 
 module Y2Partitioner
   module Widgets
@@ -91,8 +93,10 @@ module Y2Partitioner
       def table_item(cols)
         values = cols.map { |c| c.entry_value(self) }
         sub_items = children.map { |c| c.table_item(cols) }
+        open = UIState.instance.open_table_items.fetch(row_id, true)
+        puts "Prebunto open"
 
-        CWM::TableItem.new(row_id, values, children: sub_items)
+        CWM::TableItem.new(row_id, values, children: sub_items, open: open)
       end
 
       # Collection including this entry and all its descendants

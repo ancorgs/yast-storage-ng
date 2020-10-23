@@ -55,6 +55,7 @@ module Y2Partitioner
           invalidate_cached_content
           return @contents if @contents
 
+          UIState.instance.current_table = table
           @contents = VBox(
             table,
             Left(device_buttons)

@@ -18,6 +18,7 @@
 # find current contact information at www.suse.com.
 
 require "cwm/widget"
+require "y2partitioner/ui_state"
 require "y2partitioner/widgets/configurable_blk_devices_table"
 require "y2partitioner/widgets/device_table_entry"
 require "y2partitioner/widgets/columns"
@@ -69,6 +70,7 @@ module Y2Partitioner
 
         @table = ConfigurableBlkDevicesTable.new(entries, @pager)
         @table.show_columns(*columns)
+        UIState.instance.current_table = @table
         @table
       end
 

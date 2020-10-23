@@ -47,6 +47,11 @@ module Y2Partitioner
     # @return [Hash{String => Boolean}]
     attr_reader :open_items
 
+    def current_table=(table)
+      puts "CUrrent #{table.widget_id}"
+      current_status.current_table = table
+    end
+
     # Constructor
     #
     # Called through {.create_instance}, starts with a blank situation (which
@@ -87,6 +92,7 @@ module Y2Partitioner
     #
     # @param label [String, nil] nil if switching to the default tab, no matter the label
     def switch_to_tab(label)
+      current_status.save_open_items
       current_status&.active_tab = label
     end
 
@@ -137,6 +143,10 @@ module Y2Partitioner
       @open_items = overview_tree_pager.open_items
     end
 
+    def open_table_items
+      current_status.open_items
+    end
+
     protected
 
     # The current status
@@ -150,7 +160,10 @@ module Y2Partitioner
     #
     # @param status [PageStatus]
     def current_status=(status)
-      current_status.active_tab = nil if current_status && current_status != status
+      if current_status && current_status != status
+        current_status.save_open_items
+        current_status.active_tab = nil
+      end
 
       @current_status = status
     end
@@ -233,6 +246,8 @@ module Y2Partitioner
         @page_id = page_id
         @candidate_pages = candidate_pages_ids
         @selected_rows = { FALLBACK_TAB => nil }
+        @tables = {}
+        @tab_open_items = {}
       end
 
       # Returns the last selected row for the active tab
@@ -253,6 +268,20 @@ module Y2Partitioner
         selected_rows[tab] = sid
       end
 
+      def open_items
+        tab_open_items[tab] || {}
+      end
+
+      def current_table=(table)
+        tables[tab] = table
+      end
+
+      def save_open_items
+        table = tables[tab]
+        value = table ? table.open_items : {}
+        tab_open_items[tab] = value
+      end
+
       private
 
       # A collection to keep the selected rows per tab
@@ -263,6 +292,9 @@ module Y2Partitioner
       #
       # @return [Hash{String => Integer}]
       attr_reader :selected_rows
+
+      attr_reader :tables
+      attr_reader :tab_open_items
 
       # Returns the active tab or the fallback when none
       #
