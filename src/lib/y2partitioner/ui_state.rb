@@ -47,6 +47,14 @@ module Y2Partitioner
     # @return [Hash{String => Boolean}]
     attr_reader :open_items
 
+    def page_info=(info)
+      current_status.page_info = info
+    end
+
+    def page_info
+      current_status.page_info
+    end
+
     # Constructor
     #
     # Called through {.create_instance}, starts with a blank situation (which
@@ -233,6 +241,7 @@ module Y2Partitioner
         @page_id = page_id
         @candidate_pages = candidate_pages_ids
         @selected_rows = { FALLBACK_TAB => nil }
+        @tab_info = {}
       end
 
       # Returns the last selected row for the active tab
@@ -253,6 +262,14 @@ module Y2Partitioner
         selected_rows[tab] = sid
       end
 
+      def page_info
+        tab_info[tab]
+      end
+
+      def page_info=(info)
+        tab_info[tab] = info
+      end
+
       private
 
       # A collection to keep the selected rows per tab
@@ -263,6 +280,8 @@ module Y2Partitioner
       #
       # @return [Hash{String => Integer}]
       attr_reader :selected_rows
+
+      attr_reader :tab_info
 
       # Returns the active tab or the fallback when none
       #

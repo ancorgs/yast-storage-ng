@@ -21,6 +21,7 @@ require "yast"
 require "cwm/table"
 
 require "y2partitioner/device_graphs"
+require "y2partitioner/ui_state"
 require "y2partitioner/widgets/blk_devices_table"
 require "y2partitioner/widgets/columns"
 require "y2partitioner/dialogs/device_description"
@@ -98,16 +99,7 @@ module Y2Partitioner
           return nil
         end
 
-        page = pager.device_page(device)
-
-        return nil unless page
-
-        # First, pretend the user visited the page and then select the device
-        state = UIState.instance
-        state.select_page(page.tree_path)
-        state.select_row(device.sid)
-
-        pager.handle("ID" => page.widget_id)
+        jump_to_page(device)
       end
 
       # Device object selected in the table
@@ -190,6 +182,23 @@ module Y2Partitioner
 
       def default_columns
         DEFAULT_COLUMNS
+      end
+
+      def jump_to_page(device)
+        page = pager.device_page(device)
+        return nil unless page
+
+        state = UIState.instance
+
+        # First, save the status of the current page
+        current = pager.current_page
+        state.page_info = current.state_info if current.respond_to?(:state_info)
+
+        # Then, pretend the user visited the new page and then select the device
+        state.select_page(page.tree_path)
+        state.select_row(device.sid)
+
+        pager.handle("ID" => page.widget_id)
       end
 
       # Table entry to select initially when the table is rendered

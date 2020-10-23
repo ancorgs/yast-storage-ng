@@ -18,6 +18,7 @@
 # find current contact information at www.suse.com.
 
 require "yast"
+require "cwm/table"
 
 module Y2Partitioner
   module Widgets
@@ -88,11 +89,12 @@ module Y2Partitioner
       # CWM table item to represent this entry in the table
       #
       # @return [CWM::TableItem]
-      def table_item(cols)
+      def table_item(cols, open_items)
         values = cols.map { |c| c.entry_value(self) }
-        sub_items = children.map { |c| c.table_item(cols) }
+        sub_items = children.map { |c| c.table_item(cols, open_items) }
+        open = open_items.fetch(row_id, true)
 
-        CWM::TableItem.new(row_id, values, children: sub_items)
+        CWM::TableItem.new(row_id, values, children: sub_items, open: open)
       end
 
       # Collection including this entry and all its descendants

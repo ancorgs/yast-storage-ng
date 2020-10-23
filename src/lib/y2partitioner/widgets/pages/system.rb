@@ -61,6 +61,10 @@ module Y2Partitioner
           )
         end
 
+        def state_info
+          table.ui_open_items
+        end
+
         private
 
         # @return [String]
@@ -72,6 +76,9 @@ module Y2Partitioner
         # Invalidates cached content if needed according to
         # {OverviewTreePager#invalidated_views}
         def invalidate_cached_content
+          open = UIState.instance.page_info
+          table.open_items = open if open
+
           return unless pager.invalidated_pages.delete(:system)
 
           @contents = nil

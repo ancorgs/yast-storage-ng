@@ -114,10 +114,12 @@ module Y2Partitioner
         ].compact
       end
 
-      # Overrides default behavior of TreePager to register the new state with
-      # {UIState} before jumping to the tree node
+      # Overrides default behavior of TreePager to register with {UIState} the status
+      # of the current page and the new destination, before jumping to the tree node
       def switch_page(page)
-        UIState.instance.select_page(page.tree_path)
+        state = UIState.instance
+        state.page_info = current_page.state_info if current_page.respond_to?(:state_info)
+        state.select_page(page.tree_path)
         super
       end
 
