@@ -25,6 +25,23 @@ require "y2partitioner/widgets/format_and_mount"
 
 module Y2Partitioner
   module Dialogs
+    class FsOptions < CWM::CustomWidget
+      def initialize(controller, parent_widget)
+        textdomain "storage"
+
+        @controller = controller
+        @parent_widget = parent_widget
+      end
+
+      def contents
+        VBox(
+          Left(InputField("Label             ")),
+          Left(CheckBox("Enable BtrFS Snapshots")),
+          Left(CheckBox("Enable BtrFS Quotas"))
+        )
+      end
+    end
+
     # Which filesystem (and options) to use and where to mount it (with options).
     # Part of {Actions::AddPartition} and {Actions::EditBlkDevice}.
     # Formerly MiniWorkflowStepFormatMount
@@ -57,6 +74,7 @@ module Y2Partitioner
           super
 
           @format_options = Widgets::FormatOptions.new(controller, self)
+          @fs_options = FsOptions.new(controller, self)
           @mount_options = Widgets::MountOptions.new(controller, self)
         end
 
@@ -68,9 +86,15 @@ module Y2Partitioner
               MarginBox(1.45, 0.5, @format_options)
             ),
             HSpacing(5),
-            Frame(
-              _("Mounting Options"),
-              MarginBox(1.45, 0.5, @mount_options)
+            VBox(
+              Frame(
+                _("File System Options"),
+                MarginBox(1.45, 0.5, @fs_options)
+              ),
+              Frame(
+                _("Mounting Options"),
+                MarginBox(1.45, 0.5, @mount_options)
+              )
             )
           )
         end

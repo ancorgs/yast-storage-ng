@@ -352,7 +352,7 @@ module Y2Partitioner
         #
         # @return [Boolean]
         def snapshots_supported?
-          return false unless Yast::Mode.installation
+          #return false unless Yast::Mode.installation
           return false unless to_be_formatted?
 
           filesystem.can_configure_snapper?
