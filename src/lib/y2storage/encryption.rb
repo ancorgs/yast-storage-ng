@@ -98,6 +98,10 @@ module Y2Storage
     storage_forward :storage_in_etc_crypttab=, to: :in_etc_crypttab=
     private :storage_in_etc_crypttab=
 
+    # @!method set_default_mount_by
+    #   Set the mount-by method to the global default, see Storage::get_default_mount_by()
+    storage_forward :set_default_mount_by, to: :default_mount_by=
+
     # @see BlkDevice#plain_device
     def plain_device
       blk_device

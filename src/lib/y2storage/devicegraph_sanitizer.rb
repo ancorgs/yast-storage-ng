@@ -134,7 +134,28 @@ module Y2Storage
     def sanitize(devicegraph)
       errors_for(devicegraph).each { |e| e.fix(devicegraph) }
 
+      # This is an special case because no error is reported, is always fixed silently
+      fix_ignored_defaults(devicegraph)
+
       devicegraph
+    end
+
+    # Fixes the surprising value set by libstorage-ng for Encryption#mount_by when probing an
+    # already existing encryption device.
+    #
+    # During probing, libstorage-ng sets Encryption#mount_by for all the found encryption devices.
+    # If the device is listed in /etc/crypttab, libstorage-ng sets the mount_by value based on the
+    # value on that file. If that's not the case, libstorage-ng sets Encryption#mount_by to a
+    # hardcoded value of DEVICE, completely ignoring the default mount_by value that is configured
+    # for the system. That leads to problems like the one described in bsc#1165702.
+    # This method corrects that.
+    #
+    # See https://github.com/yast/yast-storage-ng/pull/1095 for more details.
+    def fix_ignored_defaults(devicegraph)
+      devicegraph.encryptions.reject(&:in_etc_crypttab?).each do |enc|
+        enc.set_default_mount_by
+        enc.ensure_suitable_mount_by
+      end
     end
 
     # Class to represent an error in a devicegraph

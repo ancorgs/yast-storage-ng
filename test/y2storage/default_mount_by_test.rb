@@ -23,9 +23,9 @@ require "y2storage"
 
 describe "default mount_by when creating a mount point" do
   before do
-    fake_scenario(scenario)
-    conf = Y2Storage::StorageManager.instance.configuration
-    conf.default_mount_by = mount_by_type
+    manager = Y2Storage::StorageManager.create_test_instance
+    manager.configuration.default_mount_by = mount_by_type
+    manager.probe_from_xml(input_file_for(scenario, suffix: nil))
   end
 
   let(:blk_device) { Y2Storage::BlkDevice.find_by_name(fake_devicegraph, dev_name) }
