@@ -191,6 +191,14 @@ module Y2Storage
           #
           parts_by_disk.each do |disk, parts|
             resize_and_delete(parts, keep, lvm_helper, disk_name: disk)
+          rescue Error
+            # If LVM was involved, maybe there is still hope if we don't abort on this error.
+            raise unless dist_calculator.lvm?
+
+            # dist_calculator tried to allocate the specific partitions for this disk but also
+            # all new physical volumes for the LVM. If the physical volumes were the culprit, we
+            # should keep trying to delete/resize stuff in other disks.
+            raise unless find_distribution(parts, ignore_lvm: true)
           end
         end
 
@@ -223,15 +231,19 @@ module Y2Storage
       # @return [Boolean]
       def success?(planned_partitions)
         # Once a distribution has been found we don't have to look for another one.
-        if !@distribution
-          spaces = free_spaces(new_graph)
-          @distribution = dist_calculator.best_distribution(planned_partitions, spaces)
-        end
+        @distribution ||= find_distribution(planned_partitions)
         !!@distribution
       rescue Error => e
         log.info "Exception while trying to distribute partitions: #{e}"
         @distribution = nil
         false
+      end
+
+      def find_distribution(planned_partitions, ignore_lvm: false)
+        spaces = free_spaces(new_graph)
+        extra = extra_disk_names.flat_map { |d| free_spaces(new_graph, d) }
+        calculator = ignore_lvm ? PartitionsDistributionCalculator.new : dist_calculator
+        calculator.best_distribution(planned_partitions, spaces, extra)
       end
 
       # Perform all the needed operations to make space for the partitions
@@ -407,6 +419,10 @@ module Y2Storage
       # @return [Array<String>]
       def candidate_disk_names
         settings.candidate_devices
+      end
+
+      def extra_disk_names
+        @extra_disk_names ||= settings.volumes.map(&:device).compact - settings.candidate_devices
       end
 
       # Whether {#resize_and_delete} should be executed several times,
