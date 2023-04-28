@@ -129,7 +129,7 @@ module Y2Storage
 
       protected
 
-      attr_reader :disk_analyzer, :dist_calculator
+      attr_reader :disk_analyzer, :dist_calculator, :extra_disk_names
 
       # New devicegraph calculated by {#provide_space}
       # @return [Devicegraph]
@@ -164,6 +164,8 @@ module Y2Storage
         @new_graph = original_graph.duplicate
         @new_graph_part_killer = PartitionKiller.new(@new_graph, candidate_disk_names)
         @new_graph_deleted_sids = []
+        # Explanation
+        @extra_disk_names = partitions.map(&:disk).compact.uniq - settings.candidate_devices
 
         # To make sure we are not freeing space in useless places first
         # restrict the operations to disks with particular disk
@@ -207,7 +209,6 @@ module Y2Storage
         #
         # Note that the result of the run above is not lost as already
         # assigned partitions are taken into account.
-        #
         resize_and_delete(partitions, keep, lvm_helper)
 
         @all_deleted_sids.concat(new_graph_deleted_sids)
@@ -241,8 +242,8 @@ module Y2Storage
 
       def find_distribution(planned_partitions, ignore_lvm: false)
         spaces = free_spaces(new_graph)
-        extra = extra_disk_names.flat_map { |d| free_spaces(new_graph, d) }
-        calculator = ignore_lvm ? PartitionsDistributionCalculator.new : dist_calculator
+        extra = extra_free_spaces(new_graph)
+        calculator = ignore_lvm ? non_lvm_dist_calculator : dist_calculator
         calculator.best_distribution(planned_partitions, spaces, extra)
       end
 
@@ -329,7 +330,7 @@ module Y2Storage
         log.info "SpaceMaker#execute_resize - #{prospect}"
 
         part = new_graph.find_device(prospect.sid)
-        target_shrink_size = resizing_size(part, planned_partitions, disk_name)
+        target_shrink_size = resizing_size(part, planned_partitions, disk_name)# + Y2Storage::DiskSize.GiB(20)
         shrink_partition(part, target_shrink_size)
         prospect.available = false
       end
@@ -391,7 +392,12 @@ module Y2Storage
       # @return [DiskSize]
       def resizing_size(partition, planned_partitions, disk_name)
         spaces = free_spaces(new_graph, disk_name)
-        dist_calculator.resizing_size(partition, planned_partitions, spaces)
+        if disk_name && extra_disk_names.include?(disk_name)
+          return non_lvm_dist_calculator.resizing_size(partition, planned_partitions, spaces)
+        end
+
+        partitions = planned_partitions.reject { |p| extra_disk_names.include?(p.disk) }
+        dist_calculator.resizing_size(partition, partitions, spaces)
       end
 
       # List of free spaces in the given devicegraph
@@ -403,6 +409,10 @@ module Y2Storage
         disks_for(graph, disk).each_with_object([]) do |d, list|
           list.concat(d.as_not_empty { d.free_spaces })
         end
+      end
+
+      def extra_free_spaces(graph)
+        extra_disk_names.flat_map { |d| free_spaces(new_graph, d) }
       end
 
       # List of candidate disk devices in the given devicegraph
@@ -421,8 +431,8 @@ module Y2Storage
         settings.candidate_devices
       end
 
-      def extra_disk_names
-        @extra_disk_names ||= settings.volumes.map(&:device).compact - settings.candidate_devices
+      def non_lvm_dist_calculator
+        PartitionsDistributionCalculator.new 
       end
 
       # Whether {#resize_and_delete} should be executed several times,

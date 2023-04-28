@@ -63,58 +63,36 @@ end
 # Partition-based proposal
 # ####################
 #
-# Volumes -> Assign weight = 1 for all volumes
+# - All partitions are created in the boot disk by default.
+# - It's possible to override that for a particular volume and specify a target disk for it
+#
 # root_device -> boot disk
+# candidate_devices -> [boot_disk]
+# allocate_volume_mode -> :auto (is the default)
+# Volumes ->
+#   Assign weight = 100 for all volumes
+#   Assign "disk" to volumes that don't go to the boot disk.
 #
-# Alternative A
-#    allocate_volume_mode -> :device
-#    Volumes -> Assign #device to ALL volumes (either "boot disk" or a explicit one). Assigning
-#    #device to all volumes is actually the only way to go. The proposal will force a (kind of
-#    random) disk for those having a nil device before starting.
-#    candidate_devices -> irrelevant. If mode is :device, the readers for
-#    ProposalSettings#candidate_devices and #root_device always infere the result from the list
-#    of proposed volumes and their respective volume.device
-#
-# Alternative B
-#    allocate_volume_mode -> :auto
-#    Volumes -> Assign "disk" to volumes that don't go to the boot disk. That's useless because that
-#    setting is ignored if mode is :auto
-#    What if we stop ignoring it? -> let's try
-#    candidate_devices -> [boot_disk]
-#
-# Delete everything
-#  linux/windows/other_delete_mode -> :all
-#
-# Keep everything
-#  resize_windows -> false
-#  linux/windows/other_delete_mode -> :none
-#
-# Resize
-#  resize_windows -> true
-#  linux/windows/other_delete_mode -> :none
-#  we need to introduce resize_linux and resize_other
-#  we may want to make PartitionsDistributionCalculator.resizing_size more agressive
-#    -> It only removes the minimim needed space. The max_sizes are not taken into account.
-#
-# Custom
-#  Maybe a different Strategy with completely different settings?
-
-
 # LVM-based proposal
 # ####################
-# It's hard to know what possibilities we want to offer for the future. See
-# https://trello.com/c/TJo1DYr2/143-storage-lvm-configuration
 #
+# - The system VG is created by default in the boot disk
+# - It's possible to specify a set of several disks if we want the system VG to (potentially) extend
+#   over them (will do it only if necessary). It's even possible to select a disk or set of disks
+#   that do not include the boot disk.
+# - All LVs are created by default in the system VG
+# - It's possible to override that for a particular volume and specify an alternative VG name and
+#   a target disk (only one) for it
 #
-# Volumes -> Assign weight = 1 for all volumes
 # root_device -> boot disk
+# candidate_devices -> disks to be used to allocate the system VG
+# allocate_volume_mode -> :auto (is the default)
+# Volumes ->
+#   Assign weight = 100 for all volumes
+#   Assign "separate_vg_name" and "disk" to volumes that don't go to the system VG
 #
-# Volumes -> Assign "disk" to ALL volumes (either "boot disk" or a explicit one)?
-# allocate_volume_mode -> :device. Looks like a requisite for ^^ to be effective
-# root_device -> boot dsk
-# candidate_devices -> all disks mentioned in the volumes? or only boot_disk?
-#
-#
+# Policies to make space
+# ######################
 #
 # Delete everything
 #  linux/windows/other_delete_mode -> :all
@@ -127,26 +105,8 @@ end
 #  resize_windows -> true
 #  linux/windows/other_delete_mode -> :none
 #  we need to introduce resize_linux and resize_other
-#  There is a bug when lvm is used with allocate_volume_mode :device. We ignore forced_disk_name
 #  we may want to make PartitionsDistributionCalculator.resizing_size more agressive
 #    -> It only removes the minimim needed space. The max_sizes are not taken into account.
 #
 # Custom
 #  Maybe a different Strategy with completely different settings?
-
-
-
-# The test case
-# sda - 1 TiB
-# sdb - 400 GiB
-# sdc - 400 GiB
-#
-# /         -> 5 GiB   - 10 GiB - 30 GiB
-# swap      -> 512 MiB - 1 GiB  - 2 GiB
-# spacewalk -> 5 GiB   - 15 GiB - unl
-# /srv      -> 3 GiB   - 5 GiB  - 10 GiB
-#
-# lvm-sep-todos
-#  - spacewalk -> sda -> 96 GiB
-#  - system -> sdb -> 96 GiB desperdiciados
-#  - srv    -> sdc -> 96 GiB desperdiciados

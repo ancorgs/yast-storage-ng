@@ -24,7 +24,7 @@ require "y2storage"
 require_relative "#{TEST_PATH}/support/proposal_examples"
 require_relative "#{TEST_PATH}/support/proposal_context"
 
-xdescribe Y2Storage::MinGuidedProposal do
+describe Y2Storage::MinGuidedProposal do
   describe "#propose with settings in the Agama style" do
     include_context "proposal"
 
@@ -36,6 +36,11 @@ xdescribe Y2Storage::MinGuidedProposal do
     let(:scenario) { "not_so_empty_disks" }
     let(:hwinfo) { Y2Storage::HWInfoDisk.new }
     let(:vols) { settings.volumes }
+
+    let(:resize_info) do
+      instance_double("Y2Storage::ResizeInfo", resize_ok?: true, reasons: 0, reason_texts: [],
+        min_size: Y2Storage::DiskSize.GiB(40), max_size: Y2Storage::DiskSize.TiB(2))
+    end
 
     before do
       allow_any_instance_of(Y2Storage::Disk).to receive(:hwinfo).and_return(hwinfo)
@@ -109,9 +114,7 @@ xdescribe Y2Storage::MinGuidedProposal do
         end
 
         context "and the system VG is allowed to use several disks" do
-          before do
-            settings.candidate_devices = ["/dev/sdb", "/dev/sdc"]
-          end
+          before { settings.candidate_devices = ["/dev/sdb", "/dev/sdc"] }
 
           context "if all volumes fit when using only a disk" do
             it "does stuff" do
@@ -132,6 +135,15 @@ xdescribe Y2Storage::MinGuidedProposal do
               proposal.propose
               Y2Storage::YamlWriter.write(proposal.devices, "/tmp/agama-lvm-sdb-sdc.yml")
             end
+          end
+        end
+
+        context "and the system VG must be located in another disk (not the boot one)" do
+          before { settings.candidate_devices = ["/dev/sdc"] }
+
+          it "does stuff" do
+            proposal.propose
+            Y2Storage::YamlWriter.write(proposal.devices, "/tmp/agama-lvm-boot_from_sdb.yml")
           end
         end
       end
