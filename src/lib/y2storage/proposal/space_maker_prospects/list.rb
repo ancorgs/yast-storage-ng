@@ -43,8 +43,10 @@ module Y2Storage
             other:   []
           }
 
-          @resize_partition_without_linux_prospects = []
-          @resize_partition_with_linux_prospects = []
+          @all_resize_partition_prospects = {
+            windows: { in_linux_disk: [], in_other_disk: [] }
+          }
+
           @wipe_disk_prospects = []
         end
 
@@ -122,6 +124,9 @@ module Y2Storage
         # @return [Array<WipeDisk>]
         attr_reader :wipe_disk_prospects
 
+        # @return [Hash]
+        attr_reader :all_resize_partition_prospects
+
         # Next available prospect of type #{DeletePartition}
         #
         # @return [DeletePartition, nil] nil if there are no available prospect
@@ -157,9 +162,9 @@ module Y2Storage
         # @return [ResizePartition, nil] nil if there are no available prospect
         #   actions
         def next_resize_partition(allow_linux_in_disk: true)
-          entry = next_useful_resize(@resize_partition_without_linux_prospects)
+          entry = next_useful_resize(resize_partition_without_linux_prospects)
           if entry.nil? && allow_linux_in_disk
-            entry = next_useful_resize(@resize_partition_with_linux_prospects)
+            entry = next_useful_resize(resize_partition_with_linux_prospects)
           end
           entry
         end
@@ -199,8 +204,8 @@ module Y2Storage
           prospects = resize_prospects_for_disk(disk, part_names)
           with_linux, without_linux = prospects.partition(&:linux_in_disk?)
 
-          @resize_partition_without_linux_prospects.concat(without_linux)
-          @resize_partition_with_linux_prospects.concat(with_linux)
+          resize_partition_without_linux_prospects.concat(without_linux)
+          resize_partition_with_linux_prospects.concat(with_linux)
         end
 
         # If possible, adds to the set a prospect action about cleaning the disk
@@ -293,8 +298,23 @@ module Y2Storage
           end
         end
 
-        def resize_partition_prospects
-          @resize_partition_without_linux_prospects + @resize_partition_with_linux_prospects
+        # @return [Array<ResizePartition>]
+        def resize_partition_without_linux_prospects
+          resize_partition_prospects(:in_other_disk)
+        end
+
+        # @return [Array<ResizePartition>]
+        def resize_partition_with_linux_prospects
+          resize_partition_prospects(:in_linux_disk)
+        end
+
+        # @return [Array<ResizePartition>]
+        def resize_partition_prospects(type = nil)
+          if [:in_linux_disk, :in_other_disk].include?(type)
+            return all_resize_partition_prospects[:windows][type]
+          end
+
+          all_resize_partition_prospects[:windows].values.flatten
         end
       end
     end
