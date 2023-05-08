@@ -33,20 +33,6 @@ module Y2Storage
           @partition_id = partition.id
         end
 
-        # Type of the partition to be deleted, according to DiskAnalyzer
-        #
-        # @return [Symbol] :windows, :linux or :other
-        def partition_type
-          @partition_type ||=
-            if analyzer.windows_partitions(disk_name).any? { |part| part.name == device_name }
-              :windows
-            elsif analyzer.linux_partitions(disk_name).any? { |part| part.name == device_name }
-              :linux
-            else
-              :other
-            end
-        end
-
         # Whether performing the action would be acceptable
         #
         # @param settings [ProposalSettings]

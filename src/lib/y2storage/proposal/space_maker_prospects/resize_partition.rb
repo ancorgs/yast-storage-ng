@@ -50,14 +50,26 @@ module Y2Storage
         # Whether performing the action would be acceptable
         #
         # @param settings [ProposalSettings]
-        def allowed?(settings)
-          settings.resize_windows
+        # @param keep [Array<Integer>] list of sids of partitions that should be kept
+        def allowed?(settings, keep)
+          return false if keep.include?(sid)
+
+          # Partitions for which resizing makes little sense. In several cases, they are not even
+          # expected to contain a filesystem or any other content recognized by libstorage-ng.
+          return false if partition.id.is?(:irst, :bios_boot, :prep, :esp)
+
+          settings.resize?(partition_type)
         end
 
         # @return [Symbol]
         def to_sym
           :resize_partition
         end
+
+      private
+
+        # @return [Partition] partition to resize
+        attr_reader :partition
       end
     end
   end

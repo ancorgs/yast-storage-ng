@@ -38,6 +38,20 @@ module Y2Storage
           @analyzer = disk_analyzer
         end
 
+        # Type of the affected partition, according to DiskAnalyzer
+        #
+        # @return [Symbol] :windows, :linux or :other
+        def partition_type
+          @partition_type ||=
+            if analyzer.windows_partitions(disk_name).any? { |part| part.name == device_name }
+              :windows
+            elsif analyzer.linux_partitions(disk_name).any? { |part| part.name == device_name }
+              :linux
+            else
+              :other
+            end
+        end
+
         # Whether there was a Linux partition in the same disk of the target
         # partition (in the original devicegraph).
         #

@@ -44,7 +44,9 @@ module Y2Storage
           }
 
           @all_resize_partition_prospects = {
-            windows: { in_linux_disk: [], in_other_disk: [] }
+            windows: { in_linux_disk: [], in_other_disk: [] },
+            linux:   [],
+            other:   []
           }
 
           @wipe_disk_prospects = []
@@ -58,7 +60,7 @@ module Y2Storage
         # @param keep [Array<Integer>] sids of partitions that should not be deleted
         def add_prospects(disk, lvm_helper, keep = [])
           add_delete_partition_prospects(disk, keep)
-          add_resize_prospects(disk)
+          add_resize_prospects(disk, keep)
           add_wipe_prospects(disk, lvm_helper)
         end
 
@@ -67,10 +69,10 @@ module Y2Storage
         # @return [SpaceMakerProspects::Base, nil] nil if there are no more
         #   available prospects
         def next_available_prospect
-          # As long as there are non-Windows partitions to delete, we refuse to
-          # resize Windows systems that share disk with a Linux. See
+          # As long as there are non-Windows partitions to delete or resize, we refuse
+          # to resize Windows systems that share disk with a Linux. See
           # #next_resize_partition for the rationale.
-          resize = next_resize_partition(allow_linux_in_disk: false)
+          resize = next_resize_partition(exclude_dual_windows: true)
           return resize if resize
 
           delete = next_delete_partition
@@ -156,17 +158,15 @@ module Y2Storage
         # likely already resized Windows once (when installing that Linux).
         # So they probably don't want to resize it again.
         #
-        # @param allow_linux_in_disk [Boolean] whether to take into account
-        #   target partitions that are in a disk which had also a Linux
+        # @param exclude_dual_windows [Boolean] whether to ignore target
+        #   Windows partitions that are in a disk which had also a Linux
         #   partition. See {PartitionProspect#linux_in_disk?}.
         # @return [ResizePartition, nil] nil if there are no available prospect
         #   actions
-        def next_resize_partition(allow_linux_in_disk: true)
-          entry = next_useful_resize(resize_partition_without_linux_prospects)
-          if entry.nil? && allow_linux_in_disk
-            entry = next_useful_resize(resize_partition_with_linux_prospects)
-          end
-          entry
+        def next_resize_partition(exclude_dual_windows: false)
+          prospects = resize_partition_prospects
+          prospects -= resize_partition_prospects(:in_linux_disk) if exclude_dual_windows
+          next_useful_resize(prospects)
         end
 
         # Next available prospect of type #{WipeDisk}
@@ -195,17 +195,16 @@ module Y2Storage
         # the given disk (i.e. prospects of type {SpaceMakerProspects::ResizePartition})
         #
         # @param disk [Disk] disk to act upon
-        def add_resize_prospects(disk)
-          part_names = analyzer.windows_partitions(disk.name).map(&:name)
-          return if part_names.empty?
-
-          log.info("Evaluating the following Windows partitions: #{part_names}")
-
-          prospects = resize_prospects_for_disk(disk, part_names)
-          with_linux, without_linux = prospects.partition(&:linux_in_disk?)
+        def add_resize_prospects(disk, keep = [])
+          prospects = resize_prospects_for_disk(disk, keep: keep)
+          windows, non_windows = prospects.partition { |e| e.partition_type == :windows }
+          with_linux, without_linux = windows.partition(&:linux_in_disk?)
+          linux, other = non_windows.partition { |e| e.partition_type == :linux }
 
           resize_partition_without_linux_prospects.concat(without_linux)
           resize_partition_with_linux_prospects.concat(with_linux)
+          resize_partition_prospects(:linux).concat(linux)
+          resize_partition_prospects(:other).concat(other)
         end
 
         # If possible, adds to the set a prospect action about cleaning the disk
@@ -232,13 +231,15 @@ module Y2Storage
         # @see #add_resize_prospects
         #
         # @return [Array<ResizePartition>]
-        def resize_prospects_for_disk(disk, part_names)
-          prospects = disk.partitions.select { |p| part_names.include?(p.name) }.map do |part|
+        def resize_prospects_for_disk(disk, keep: [])
+          partitions = disk.partitions.reject { |part| part.type.is?(:extended) }
+
+          prospects = partitions.map do |part|
             SpaceMakerProspects::ResizePartition.new(part, analyzer)
           end
 
           prospects.select do |action|
-            allowed = action.allowed?(settings)
+            allowed = action.allowed?(settings, keep)
             log.info "SpaceMakerProspects::ResizePartition allowed? #{allowed} -> #{action}"
             allowed
           end
@@ -314,7 +315,14 @@ module Y2Storage
             return all_resize_partition_prospects[:windows][type]
           end
 
-          all_resize_partition_prospects[:windows].values.flatten
+          if [:linux, :other].include?(type)
+            return all_resize_partition_prospects[type]
+          end
+
+          windows = all_resize_partition_prospects[:windows].values.flatten
+          return windows if type == :windows
+
+          windows + all_resize_partition_prospects[:linux] + all_resize_partition_prospects[:other]
         end
       end
     end

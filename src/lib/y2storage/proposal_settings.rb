@@ -171,6 +171,10 @@ module Y2Storage
 
     # @return [Boolean] whether to resize Windows systems if needed
     attr_accessor :resize_windows
+    # @return [Boolean] whether to resize Linux partitions if needed
+    attr_accessor :resize_linux
+    # @return [Boolean] whether to resize other partitions (not Linux or Windows) if needed
+    attr_accessor :resize_other
 
     # What to do regarding removal of existing partitions hosting a Windows system.
     #
@@ -301,6 +305,14 @@ module Y2Storage
 
     alias_method :delete_forced?, :delete_forced
 
+    # Whether the settings allow resizing a given type of partitions
+    #
+    # @param type [#to_s] :linux, :windows or :other
+    # @return [Boolean]
+    def resize?(type)
+      !!send(:"resize_#{type}")
+    end
+
     def windows_delete_mode=(mode)
       @windows_delete_mode = validated_delete_mode(mode)
     end
@@ -321,7 +333,8 @@ module Y2Storage
     SETTINGS = [
       :multidisk_first, :root_device, :explicit_root_device,
       :candidate_devices, :explicit_candidate_devices,
-      :windows_delete_mode, :linux_delete_mode, :other_delete_mode, :resize_windows,
+      :windows_delete_mode, :linux_delete_mode, :other_delete_mode,
+      :resize_windows, :resize_linux, :resize_other,
       :delete_resize_configurable,
       :lvm, :separate_vgs, :allocate_volume_mode, :lvm_vg_strategy, :lvm_vg_size
     ].freeze
@@ -410,6 +423,8 @@ module Y2Storage
       multidisk_first:            false,
       other_delete_mode:          :ondemand,
       resize_windows:             true,
+      resize_linux:               false,
+      resize_other:               false,
       separate_vgs:               false,
       volumes:                    [],
       windows_delete_mode:        :ondemand
