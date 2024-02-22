@@ -146,6 +146,20 @@ module Y2Storage
     # @return [String, nil]
     attr_accessor :device
 
+    attr_accessor :reuse_name
+    attr_accessor :reformat
+
+    # @see #reformat
+    #
+    # @return [Boolean]
+    def reformat?
+      reformat
+    end
+
+    def reuse?
+      !(reuse_name.nil? || reuse_name.empty?)
+    end
+
     # Whether to ignore the fact that this volume is the fallback for the sizes of other volumes
     # (ie. is referenced at any #fallback_for_min_size, #fallback_for_desired_size,
     # #fallback_for_max_size or #fallback_for_max_size_lvm).
@@ -354,6 +368,7 @@ module Y2Storage
       @fs_types                   = []
       @ignore_fallback_sizes      = false
       @ignore_snapshots_sizes     = false
+      @reformat                   = true
     end
 
     # For some features (i.e., fs_types and subvolumes) fallback values could be applied

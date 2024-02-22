@@ -40,9 +40,10 @@ module Y2Storage
       #
       # @param disk_analyzer [DiskAnalyzer] information about existing partitions
       # @param settings [ProposalSettings] proposal settings
-      def initialize(disk_analyzer, settings)
+      def initialize(disk_analyzer, settings, keep_sids = [])
         @disk_analyzer = disk_analyzer
         @settings = settings
+        @keep_sids = keep_sids
         @all_deleted_sids = []
       end
 
@@ -71,10 +72,10 @@ module Y2Storage
         # update storage ids of reused volumes in planned volumes list
         planned_partitions.select(&:reuse?).each do |part|
           p = @original_graph.find_by_name(part.reuse_name)
-          part.reuse_sid = p.sid if p
+          part.keep_sid = p.sid if p
         end
 
-        # Partitions that should not be deleted
+        # Devices that should not be deleted
         keep = lvm_helper.partitions_in_vg
         # Let's filter out partitions with some value in #reuse_name
         partitions = planned_partitions.dup
@@ -86,6 +87,7 @@ module Y2Storage
 
         # map device names to storage ids, as names may change during space making
         keep = keep.map { |x| @original_graph.find_by_name(x) }.compact.map(&:sid)
+        keep = (keep + keep_sids).uniq
 
         calculate_new_graph(partitions, keep, lvm_helper)
 
@@ -105,7 +107,7 @@ module Y2Storage
 
         result = original_graph.dup
         actions = SpaceMakerActions::List.new(settings.space_settings, disk_analyzer)
-        disks_for(result).each { |d| actions.add_mandatory_actions(d) }
+        disks_for(result).each { |d| actions.add_mandatory_actions(d, keep_sids) }
 
         while (action = actions.next)
           sids = execute_action(action, result)
@@ -120,6 +122,7 @@ module Y2Storage
       protected
 
       attr_reader :disk_analyzer, :dist_calculator
+      attr_reader :keep_sids
 
       # Disks that are not candidate devices but still must be considered because
       # there are planned partitions explicitly targeted to those disks

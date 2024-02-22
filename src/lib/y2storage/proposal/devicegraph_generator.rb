@@ -53,14 +53,14 @@ module Y2Storage
         lvm_lvs, part_devices = planned_devices.partition { |dev| dev.is_a?(Planned::LvmLv) }
         partitions = part_devices.map { |dev| planned_partition_for(dev) }
 
-        lvm_helper = LvmHelper.new(lvm_lvs, settings)
+        lvm_helper = LvmHelper.new(lvm_lvs.reject(&:reuse?), settings)
         space_result = provide_space(partitions, initial_graph, lvm_helper, space_maker)
 
         refine_planned_partitions!(partitions, space_result[:deleted_partitions])
         creator_result = create_partitions(
           space_result[:partitions_distribution], space_result[:devicegraph]
         )
-        reuse_partitions!(partitions, creator_result.devicegraph)
+        reuse_devices(planned_devices, creator_result.devicegraph)
 
         graph = create_separate_vgs(planned_devices, creator_result).devicegraph
 
@@ -207,15 +207,15 @@ module Y2Storage
         partition_creator.create_partitions(distribution)
       end
 
-      # Adjusts pre-existing (not created by us) partitions assigning its
+      # Adjusts pre-existing (not created by us) devices assigning its
       # mount point and boot flag
       #
       # It works directly on the passed devicegraph
       #
-      # @param planned_partitions [Array<Planned::Partition>]
+      # @param planned_devices [Array<Planned::Device>]
       # @param graph [Devicegraph] devicegraph to modify
-      def reuse_partitions!(planned_partitions, graph)
-        planned_partitions.each do |planned|
+      def reuse_devices(planned_devices, graph)
+        planned_devices.each do |planned|
           planned.reuse!(graph)
         end
       end

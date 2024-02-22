@@ -43,8 +43,9 @@ module Y2Storage
         # @see SpaceMaker#prepare_devicegraph
         #
         # @param disk [Disk] disk to act upon
-        def add_mandatory_actions(disk)
-          strategy.add_mandatory_actions(disk)
+        # @param keep [Array<Integer>] sids of partitions that should not be deleted
+        def add_mandatory_actions(disk, keep)
+          strategy.add_mandatory_actions(disk, keep)
         end
 
         # Adds optional actions to be performed if needed until the goal is reached
@@ -82,6 +83,12 @@ module Y2Storage
 
         def strategy?(name, settings)
           settings.strategy.to_sym == name.to_sym
+        end
+
+        def parAAAtitions_for_reuse_sids(graph)
+          devices = reuse_sids.map { |s| graph.find_device(s) }.compact
+          all_devices = devices + devices.flat_map(&:ancestors)
+          all_devices.select { |d| d.is?(:partition) }
         end
       end
     end

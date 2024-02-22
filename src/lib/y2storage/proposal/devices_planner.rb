@@ -152,7 +152,11 @@ module Y2Storage
       # @param volume [VolumeSpecification]
       # @return [Planned::Device]
       def planned_device(volume)
-        if settings.separate_vgs && volume.separate_vg?
+        reused = reusable_device(volume)
+
+        if reused
+          planned_reuse(volume, reused)
+        elsif settings.separate_vgs && volume.separate_vg?
           planned_separate_vg(volume)
         else
           planned_type = planned_lv?(volume) ? Planned::LvmLv : Planned::Partition
@@ -180,6 +184,33 @@ module Y2Storage
         planned_device = planned_type.new(volume.mount_point, volume.fs_type)
         adjust_to_settings(planned_device, volume)
         planned_device
+      end
+
+      def reusable_device(volume)
+        return nil unless volume.reuse?
+
+        device = devicegraph.find_by_any_name(volume.reuse_name)
+        return nil unless device.is?(:blk_device)
+
+        device
+      end
+
+      def reused_planned_type(reused)
+        return Planned::LvmLv if reused.is?(:lvm_lv)
+        return Planned::Partition if reused.is?(:partition)
+
+        # Other kinds of planned we may need... or not
+        # Bcache Md StrayBlkDevice
+        Planned::Disk
+      end
+
+      def planned_reuse(volume, reused)
+        planned_type = reused_planned_type(reused)
+        planned = planned_blk_device(volume, planned_type)
+        # TODO: reuse and format
+        planned.reuse_name = reused.name
+        planned.reformat = volume.reformat?
+        planned
       end
 
       # @see #planned_device

@@ -232,7 +232,13 @@ module Y2Storage
     end
 
     def space_maker
-      @space_maker ||= Proposal::SpaceMaker.new(disk_analyzer, settings)
+      @space_maker ||= Proposal::SpaceMaker.new(disk_analyzer, settings, reuse_sids)
+    end
+
+    def reuse_sids
+      settings.volumes.select(&:reuse?).map do |vol|
+        initial_devicegraph.find_by_any_name(vol.reuse_name)
+      end.compact.map(&:sid)
     end
 
     # Copy of #initial_devicegraph without all the partitions that must be wiped out
