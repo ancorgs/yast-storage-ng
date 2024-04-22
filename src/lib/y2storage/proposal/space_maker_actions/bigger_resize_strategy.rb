@@ -39,8 +39,9 @@ module Y2Storage
 
         # @param disk [Disk] see {List}
         def add_mandatory_actions(disk)
-          devices = disk.partition_table? ? partitions(disk) : [disk]
-          devices.select! { |d| configured?(d, :force_delete) }
+          return unless disk.partition_table?
+
+          devices = partitions(disk).select { |p| configured?(p, :force_delete) }
           to_delete_mandatory.concat(devices)
         end
 
@@ -113,7 +114,7 @@ module Y2Storage
           if disk.partition_table?
             partitions = partitions(disk).select { |p| configured?(p, :delete) }
             to_delete_optional.concat(partitions.sort { |a, b| preferred_delete(a, b) })
-          elsif configured?(disk, :delete)
+          else
             to_delete_optional << disk
           end
         end

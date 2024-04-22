@@ -52,6 +52,7 @@ describe Y2Storage::MinGuidedProposal do
       fake_devicegraph.mount_points.each { |i| i.parents.first.remove_mount_point }
 
       settings.space_settings.strategy = :bigger_resize
+      settings.lvm_vg_reuse = false
       # Agama uses homogeneous weights for all volumes
       settings.volumes.each { |v| v.weight = 100 }
       # Activate support for separate LVM VGs
@@ -78,6 +79,46 @@ describe Y2Storage::MinGuidedProposal do
       # needs to get created at sda).
       it "does not crash" do
         expect { proposal.propose }.to_not raise_error
+      end
+    end
+
+    context "with one disk containing partitions and another directly formatted" do
+      let(:scenario) { "gpt_msdos_and_empty" }
+
+      let(:lvm) { true }
+
+      before do
+        settings.candidate_devices = ["/dev/sda", "/dev/sdf"]
+        settings.root_device = "/dev/sda"
+      end
+
+      let(:volumes) { [{ "mount_point" => "/", "fs_type" => "xfs", "min_size" => "190 GiB" }] }
+
+      context "if there is no need to use the formatted disk (everything fits in the other)" do
+        before do
+          settings.space_settings.actions = { "/dev/sda1" => :delete }
+        end
+
+        it "does not modify the formatted disk" do
+          proposal.propose
+          disk = proposal.devices.find_by_name("/dev/sdf")
+          expect(disk.filesystem.type.is?(:xfs)).to eq true
+          expect(disk.partitions).to be_empty
+        end
+      end
+
+      context "if the formatted disk needs to be used" do
+        before do
+          # No delete action is needed for the disk
+          settings.space_settings.actions = {}
+        end
+
+        it "empties the disk deleting the filesystem" do
+          proposal.propose
+          disk = proposal.devices.find_by_name("/dev/sdf")
+          expect(disk.filesystem).to be_nil
+          expect(disk.partitions).to_not be_empty
+        end
       end
     end
   end
